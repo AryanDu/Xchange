@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Create Account — SkillShare Lite</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+<style>
+  :root{
+    --bg1: #ffffff;
+    --bg2: #0d561fff; /* light green */
+    --accent: linear-gradient(135deg,#fff,#d8f7e0 40%, #b7f0c9 100%);
+    --card: #cfe79fff;
+    --muted:#65736b;
+    --btn-grad: linear-gradient(135deg,#2bb673,#17a85a);
+    --shadow: 0 10px 30px rgba(23,160,90,0.12);
+    --glass: rgba(255,255,255,0.6);
+  }
+  *{box-sizing:border-box;font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: radial-gradient(1200px 600px at 10% 10%, rgba(36,163,94,0.08), transparent 8%),
+                radial-gradient(1000px 500px at 90% 90%, rgba(23,160,90,0.06), transparent 8%),
+                linear-gradient(180deg,var(--bg1),var(--bg2));
+    padding:40px;
+  }
+
+  .container{
+    width:100%;
+    max-width:920px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(250,255,245,0.85));
+    border-radius:18px;
+    box-shadow:var(--shadow);
+    padding:26px;
+    display:grid;
+    grid-template-columns: 1fr 420px;
+    gap:20px;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  /* left form */
+  .brand{
+    display:flex;align-items:center;gap:12px;margin-bottom:8px;
+  }
+  .logo{
+    width:56px;height:56px;border-radius:12px;background:var(--btn-grad);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;box-shadow:0 6px 18px rgba(0,0,0,0.08);
+    transform: translateY(-4px);
+  }
+  h1{margin:8px 0 18px;font-size:20px}
+  p.lead{color:var(--muted);margin:0 0 18px;font-size:14px}
+
+  form{display:flex;flex-direction:column;gap:12px}
+  label{font-size:13px;color:#274233;font-weight:600;margin-bottom:6px;display:block}
+  input[type="text"], input[type="email"], input[type="password"], input[type="number"], textarea{
+    width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(20,60,40,0.06);background:transparent;font-size:14px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.6);
+  }
+  textarea{min-height:140px;resize:vertical}
+
+  .row{display:flex;gap:12px}
+  .col{flex:1}
+
+  /* tags input */
+  .tags-input{
+    display:flex;flex-wrap:wrap;gap:8px;padding:8px;border-radius:8px;border:1px dashed rgba(20,60,40,0.06);
+    background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(250,255,250,0.6));
+  }
+  .tag{background:#f1fff4;padding:6px 10px;border-radius:999px;border:1px solid rgba(20,60,40,0.04);font-weight:600;color:#11663f}
+  .tag .x{margin-left:8px;cursor:pointer;font-weight:700;color:#3d6b52}
+
+  /* right preview */
+  .preview{
+    padding:18px;border-radius:12px;background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(245,255,245,0.9));
+    border:1px solid rgba(20,60,40,0.03);display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:flex-start;
+  }
+  .avatar-preview{width:120px;height:120px;border-radius:16px;background:linear-gradient(135deg,#e6fff0,#d3fce0);display:flex;align-items:center;justify-content:center;font-weight:700;color:#0f5132;font-size:24px}
+  .small-muted{font-size:13px;color:var(--muted)}
+  .chip{padding:8px 12px;border-radius:999px;background:linear-gradient(90deg,#e9fff0,#d0f5dc);border:1px solid rgba(20,60,40,0.04);font-weight:600;color:#0f5132}
+  .big-btn{
+    padding:12px 18px;border-radius:12px;border:none;color:#fff;font-weight:700;background:var(--btn-grad);cursor:pointer;box-shadow:0 10px 30px rgba(23,160,90,0.18);
+    transform: translateZ(0);transition: transform .18s cubic-bezier(.2,.9,.3,1), box-shadow .18s;
+  }
+  .big-btn:hover{transform: translateY(-4px);box-shadow:0 18px 40px rgba(23,160,90,0.22)}
+
+  .hint{font-size:12px;color:var(--muted)}
+
+  /* validation */
+  .error{color:#b00020;font-size:13px;margin-top:6px}
+
+  /* responsive */
+  @media (max-width:980px){
+    .container{grid-template-columns: 1fr; padding:18px}
+    .preview{order:-1}
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div>
+    <div class="brand">
+      <div class="logo">SS</div>
+      <div>
+        <h1>Create your account</h1>
+        <p class="lead">Start teaching and learning — profile with skills & languages. Bio must be 100–200 words.</p>
+      </div>
+    </div>
+
+    <form id="signupForm" onsubmit="return submitForm(event)">
+      <div class="row">
+        <div class="col">
+          <label>Full name *</label>
+          <input type="text" id="full_name" placeholder="e.g., Aryan Dubey" required />
+        </div>
+        <div style="width:120px">
+          <label>Age *</label>
+          <input type="number" id="age" placeholder="21" min="1" max="120" required />
+        </div>
+      </div>
+
+      <div>
+        <label>Email *</label>
+        <input type="email" id="email" placeholder="you@example.com" required />
+      </div>
+
+      <div class="row">
+        <div class="col">
+          <label>Password *</label>
+          <input type="password" id="password" placeholder="Choose a secure password" required />
+        </div>
+        <div style="width:160px">
+          <label>Profile picture (URL)</label>
+          <input type="text" id="avatar_url" placeholder="https://..." />
+        </div>
+      </div>
+
+      <div>
+        <label>Skills (press Enter to add)</label>
+        <div id="skillsInput" class="tags-input">
+          <input id="skillField" type="text" placeholder="e.g., Python" style="border:none;flex:1;min-width:120px;padding:6px" />
+        </div>
+      </div>
+
+      <div>
+        <label>Languages (press Enter to add)</label>
+        <div id="langInput" class="tags-input">
+          <input id="langField" type="text" placeholder="e.g., English" style="border:none;flex:1;min-width:120px;padding:6px" />
+        </div>
+      </div>
+
+      <div>
+        <label>Bio (100–200 words) *</label>
+        <textarea id="bio" placeholder="Write about your background, experience, and what you can teach..." required></textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="hint">Write 100–200 words — helps learners know you better.</div>
+          <div id="bioCount" class="hint">0 words</div>
+        </div>
+      </div>
+
+      <div id="formError" class="error" style="display:none"></div>
+
+      <div style="display:flex;gap:12px;margin-top:12px;align-items:center">
+        <button type="submit" class="big-btn">Create account</button>
+        <div class="hint">By creating, you agree to our <u>terms</u>.</div>
+      </div>
+    </form>
+  </div>
+
+  <aside class="preview">
+    <div class="avatar-preview" id="avatarPreview">AD</div>
+    <div style="text-align:center">
+      <div id="pName" style="font-weight:700;font-size:18px">Your name</div>
+      <div class="small-muted" id="pMeta">Age — Languages</div>
+    </div>
+
+    <div style="width:100%;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px">
+      <div id="skillChips"></div>
+    </div>
+
+    <div style="width:100%;margin-top:12px">
+      <div class="hint">Short bio preview:</div>
+      <div id="bioPreview" style="margin-top:8px;color:#23482f;font-size:13px;line-height:1.45;max-height:160px;overflow:auto"></div>
+    </div>
+  </aside>
+</div>
+
+<script>
+const API_BASE = 'http://127.0.0.1:8000';
+// set your deployed backend here if needed
+  const skills = [];
+  const langs = [];
+
+  const skillField = document.getElementById('skillField');
+  const langField = document.getElementById('langField');
+  const skillsInput = document.getElementById('skillsInput');
+  const langInput = document.getElementById('langInput');
+  const skillChips = document.getElementById('skillChips');
+  const avatarPreview = document.getElementById('avatarPreview');
+  const pName = document.getElementById('pName');
+  const pMeta = document.getElementById('pMeta');
+  const bioPreview = document.getElementById('bioPreview');
+  const bioCount = document.getElementById('bioCount');
+  const formError = document.getElementById('formError');
+
+  // helper to render chips
+  function renderChips() {
+    skillChips.innerHTML = '';
+    skills.forEach(s => {
+      const el = document.createElement('div');
+      el.className = 'chip';
+      el.style.margin = '4px';
+      el.textContent = s;
+      skillChips.appendChild(el);
+    });
+    // languages in preview meta
+    pMeta.textContent = (document.getElementById('age').value || '—') + ' — ' + (langs.join(', ') || 'Languages');
+  }
+
+  function addTag(list, value, inputEl) {
+    const v = value.trim();
+    if(!v) return;
+    if(list.includes(v)) return;
+    list.push(v);
+    inputEl.value = '';
+    renderChips();
+  }
+
+  skillField.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); addTag(skills, skillField.value, skillField); updatePreview(); }
+  });
+  langField.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); addTag(langs, langField.value, langField); updatePreview(); }
+  });
+
+  // update preview on input
+  document.getElementById('full_name').addEventListener('input', updatePreview);
+  document.getElementById('age').addEventListener('input', updatePreview);
+  document.getElementById('avatar_url').addEventListener('input', updatePreview);
+  document.getElementById('bio').addEventListener('input', ()=>{
+    const text = document.getElementById('bio').value;
+    bioPreview.textContent = text.slice(0,700);
+    bioCount.textContent = wordCount(text) + ' words';
+  });
+
+  function updatePreview(){
+    const name = document.getElementById('full_name').value.trim() || 'Your name';
+    pName.textContent = name;
+    const av = document.getElementById('avatar_url').value.trim();
+    if(av){
+      avatarPreview.style.backgroundImage = `url(${av})`;
+      avatarPreview.style.backgroundSize = 'cover';
+      avatarPreview.textContent = '';
+    } else {
+      avatarPreview.style.backgroundImage = 'linear-gradient(135deg,#e6fff0,#d3fce0)';
+      avatarPreview.textContent = (name.split(' ').map(n=>n[0]||'').slice(0,2).join('')).toUpperCase();
+    }
+    pMeta.textContent = (document.getElementById('age').value || '—') + ' — ' + (langs.join(', ') || 'Languages');
+    renderChips();
+  }
+
+  function wordCount(text){
+    return text.trim().split(/\s+/).filter(Boolean).length;
+  }
+
+  async function submitForm(e){
+    e.preventDefault();
+    formError.style.display = 'none';
+    const full_name = document.getElementById('full_name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const age = parseInt(document.getElementById('age').value);
+    const avatar_url = document.getElementById('avatar_url').value.trim();
+    const bio = document.getElementById('bio').value.trim();
+
+    // basic client side validation
+    if(!full_name){ showError('Name is required'); return; }
+    if(!email){ showError('Email is required'); return; }
+    if(!password || password.length < 6){ showError('Password required (min 6 chars)'); return; }
+    if(!age || isNaN(age) || age < 1 || age > 120){ showError('Enter a valid age'); return; }
+    const wc = wordCount(bio);
+    if(wc < 100 || wc > 200){ showError('Bio must be between 100 and 200 words. Current: ' + wc); return; }
+    // prepare payload
+    const payload = {
+      full_name, email, password, age, avatar_url, bio,
+      skills: skills, languages: langs
+    };
+
+    try {
+      const res = await fetch(API_BASE + '/api/auth/signup/', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+    if (res.status === 201) {
+    Swal.fire({
+        title: "Account Created! 🎉",
+        text: "Your registration was successful. You will now be redirected to the login page.",
+        icon: "success",
+        
+        confirmButtonText: "Continue to Login",
+        confirmButtonColor: '#125a23ff',
+        allowOutsideClick: false,
+        showClass: {
+            popup: 'animate__animated animate__bounceIn'
+        }
+       }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = '/login/';
+        }
+            });
+     }else {
+        // show server validation errors
+        showError(JSON.stringify(data));
+      }
+    } catch(err){
+      showError('Network error: ' + err.message);
+    }
+  }
+
+  function showError(msg){
+    formError.style.display = 'block';
+    formError.textContent = msg;
+  }
+
+  // initial
+  updatePreview();
+</script>
+
+</body>
+</html>
