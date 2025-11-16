@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>XCHANGE — Discover People</title>
+
+  <!-- Tailwind CDN (quick) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Axios for API calls -->
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+  <!-- GSAP for animations -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+  <!-- Vanilla-tilt for 3D tilt effect -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.7.2/vanilla-tilt.min.js"></script>
+
+  <!-- Heroicons (optional small icons) -->
+  <script src="https://unpkg.com/feather-icons"></script>
+
+  <style>
+    /* Custom theme colors */
+    :root{
+      --accent1: #2bb673;
+      --accent2: #17a85a;
+      --bg-start: #ffffff;
+      --bg-end: #eafaf0;
+      --muted: #6b7b6b;
+      --card-shadow: 0 18px 40px rgba(16,90,45,0.06);
+    }
+
+    /* page background gradient */
+    body{
+      background: radial-gradient(800px 300px at 10% 8%, rgba(39,160,87,0.06), transparent 6%),
+                  linear-gradient(180deg, var(--bg-start), var(--bg-end));
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    /* search box shadow and glass */
+    .glass {
+      background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(247,255,250,0.75));
+      border-radius: 14px;
+      box-shadow: var(--card-shadow);
+      border: 1px solid rgba(20,60,40,0.03);
+    }
+
+    /* 3D depth hover */
+    .card-3d{
+      transform-style: preserve-3d;
+      transition: transform .24s cubic-bezier(.2,.9,.3,1), box-shadow .24s;
+    }
+    .card-3d:hover{ transform: translateY(-8px) scale(1.006); box-shadow: 0 30px 60px rgba(16,90,45,0.09); }
+
+    /* skill chip */
+    .chip{
+      background: linear-gradient(90deg, rgba(255,255,255,0.95), rgba(250,255,250,0.9));
+      border: 1px solid rgba(16,90,45,0.06);
+      padding: 6px 10px; border-radius: 999px; font-weight:600; font-size:12px;
+      color: #114b2a;
+    }
+
+    /* chat popup */
+    #chatPopup {
+      width: 340px; max-width: calc(100% - 24px);
+      bottom: 26px; right: 26px; position: fixed; z-index: 80;
+      display: none; border-radius: 12px; overflow:hidden;
+      box-shadow: 0 30px 60px rgba(16,90,45,0.12);
+      background: linear-gradient(180deg, #fff, #f7fff8);
+      border: 1px solid rgba(20,60,40,0.04);
+    }
+    #chatHeader{ background: linear-gradient(90deg,var(--accent1),var(--accent2)); color:white; padding:10px 14px; display:flex; align-items:center; gap:10px; }
+    #chatBody{ padding:12px; max-height:260px; overflow:auto; }
+    #chatComposer{ display:flex; gap:8px; padding:10px; border-top:1px solid rgba(0,0,0,0.04); }
+
+    /* small responsive tweaks */
+    @media (max-width: 900px){
+      #leftCol{ display:none; }
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- Top bar -->
+  <header class="w-full py-4 px-6 flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--accent1)] to-[var(--accent2)] flex items-center justify-center text-white font-bold text-lg shadow-sm">XS</div>
+      <div>
+        <div class="text-xl font-semibold">XCHANGE</div>
+        <div class="text-sm text-[var(--muted)]">Learn together • Connect faster</div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button id="btnHome" class="px-3 py-2 rounded-md text-sm font-semibold hover:brightness-95">Home</button>
+      <button id="btnProfile" class="px-3 py-2 rounded-md text-sm font-semibold">Profile</button>
+      <button id="btnLogout" class="px-4 py-2 rounded-md bg-red-500 text-white font-semibold hover:brightness-95">Logout</button>
+    </div>
+  </header>
+
+  <!-- Main layout -->
+  <main class="max-w-6xl mx-auto px-6 pb-20 grid grid-cols-12 gap-6">
+    <!-- Left: filters + search -->
+    <aside id="leftCol" class="col-span-3">
+      <div class="glass p-4 mb-4">
+        <div class="text-sm font-semibold mb-2">Search skills</div>
+        <div class="flex gap-2">
+          <input id="searchInput" type="search" placeholder="Search by skill e.g. Python" class="w-full px-3 py-2 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--accent1)]" />
+          <button id="btnSearch" class="px-3 py-2 rounded-lg bg-gradient-to-br from-[var(--accent1)] to-[var(--accent2)] text-white font-semibold">Go</button>
+        </div>
+      </div>
+
+      <div class="glass p-4 mb-4">
+        <div class="text-sm font-semibold mb-2">Filters</div>
+
+        <label class="block mb-2 text-sm">Age</label>
+        <select id="ageFilter" class="w-full px-3 py-2 rounded-lg border">
+          <option value="">Any age</option>
+          <option value="lt18">&lt; 18</option>
+          <option value="18-25">18 - 25</option>
+          <option value="25-35">25 - 35</option>
+          <option value="35+">35+</option>
+        </select>
+
+        <div class="mt-3">
+          <div class="text-sm font-semibold mb-2">Skills (pick)</div>
+          <div id="skillsList" class="grid grid-cols-2 gap-2 text-sm">
+            <!-- dynamically populated -->
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <div class="text-sm font-semibold mb-2">Languages</div>
+          <div class="flex gap-2 flex-wrap text-sm">
+            <button class="chip filter-btn" data-filter-type="lang" data-filter-value="English">English</button>
+            <button class="chip filter-btn" data-filter-type="lang" data-filter-value="Hindi">Hindi</button>
+            <button class="chip filter-btn" data-filter-type="lang" data-filter-value="Spanish">Spanish</button>
+          </div>
+        </div>
+
+        <div class="mt-4 flex gap-2">
+          <button id="btnApply" class="w-1/2 px-3 py-2 rounded-lg bg-[var(--accent1)] text-white font-semibold">Apply</button>
+          <button id="btnClear" class="w-1/2 px-3 py-2 rounded-lg border">Clear</button>
+        </div>
+      </div>
+
+      <div class="glass p-4">
+        <div class="font-semibold mb-2">Suggestions</div>
+        <div class="text-sm text-[var(--muted)]">People you might like — updated based on filters and randomness.</div>
+      </div>
+    </aside>
+
+    <!-- Center: feed -->
+    <section id="feedCol" class="col-span-9 space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-semibold">Discover People</h2>
+        <div class="text-sm text-[var(--muted)]" id="resultsCount">—</div>
+      </div>
+
+      <div id="feedGrid" class="grid grid-cols-3 gap-6">
+        <!-- cards inserted here -->
+      </div>
+
+      <div id="emptyState" class="hidden text-center text-[var(--muted)] py-12">
+        No people found. Try clearing filters.
+      </div>
+    </section>
+  </main>
+
+  <!-- Chat popup (prototype) -->
+  <div id="chatPopup" class="rounded-lg">
+    <div id="chatHeader">
+      <div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;font-weight:700">XS</div>
+      <div id="chatTitle" style="font-weight:700">Chat</div>
+      <div style="margin-left:auto;cursor:pointer" id="chatClose">✕</div>
+    </div>
+    <div id="chatBody"></div>
+    <div id="chatComposer">
+      <input id="chatInput" class="flex-1 px-3 py-2 rounded-lg border" placeholder="Write a message..." />
+      <button id="chatSend" class="px-3 py-2 rounded-lg bg-[var(--accent1)] text-white">Send</button>
+    </div>
+  </div>
+
+<script>
+/* ========== Config & Helpers ========== */
+const API_BASE = 'http://127.0.0.1:8000';  // change if needed
+axios.defaults.baseURL = API_BASE;
+
+
+function showToast(msg, type='info'){
+  const el = document.createElement('div');
+  el.textContent = msg;
+  el.className = 'fixed right-6 bottom-6 px-4 py-2 rounded shadow-md bg-white border';
+  document.body.appendChild(el);
+  setTimeout(()=> el.remove(), 2400);
+}
+
+/* Redirect to login if not logged in */
+(async function(){
+  const access = localStorage.getItem('access_token');
+  if(!access){
+    // no token -> go to login
+    window.location.href = '/login/';
+    return;
+  }
+  // try a lightweight profile fetch first (no UI flash)
+  try{
+    const res = await fetch(API_BASE + '/api/me/', {
+      headers: { 'Authorization': 'Bearer ' + access }
+    });
+    if(!res.ok){
+      // token invalid/expired -> redirect to login
+      window.location.href = '/login/';
+      return;
+    }
+    // token ok -> proceed to load feed
+    const me = await res.json();
+    // set profile UI values then load feed
+    document.getElementById('btnProfile').textContent = (me.full_name || me.username);
+    await loadAndRender(); // or fetchProfile(); load feed after this
+  }catch(e){
+    // network or server error -> go to login (or show message)
+    console.error(e);
+    window.location.href = '/login/';
+  }
+})();
+
+/* Helper to set auth header for axios */
+function authHeaders(){
+  return { headers: { Authorization: 'Bearer ' + localStorage.getItem('access_token') } };
+}
+
+/* ========= UI refs ========= */
+const feedGrid = document.getElementById('feedGrid');
+const resultsCount = document.getElementById('resultsCount');
+const searchInput = document.getElementById('searchInput');
+const btnSearch = document.getElementById('btnSearch');
+const btnApply = document.getElementById('btnApply');
+const btnClear = document.getElementById('btnClear');
+const ageFilter = document.getElementById('ageFilter');
+const skillsListEl = document.getElementById('skillsList');
+const emptyState = document.getElementById('emptyState');
+
+let allUsers = [];      // raw users from API
+let currentFilters = { search: '', age: '', skills: [], lang: '' };
+
+/* ========== Fetch current user & feed ========== */
+async function fetchProfile(){
+  try{
+    const res = await axios.get('/api/me/', authHeaders());
+    return res.data;
+  }catch(e){
+    console.error(e);
+    // token invalid -> force login
+    window.location.href = '/login/';
+  }
+}
+
+async function fetchFeed(params = {}){
+  // params: { search, age, skills, lang, page }
+  try{
+    // build query string
+    const q = new URLSearchParams();
+    if(params.search) q.append('search', params.search);
+    if(params.age) q.append('age', params.age);
+    if(params.lang) q.append('lang', params.lang);
+    if(params.skills && params.skills.length) q.append('skills', params.skills.join(','));
+    const url = '/api/users/?' + q.toString();
+    const res = await axios.get(url, authHeaders());
+    // if your users list looks different, adapt accordingly
+    return res.data;
+  }catch(err){
+    console.error(err);
+    showToast('Could not load feed — server error', 'error');
+    return [];
+  }
+}
+
+/* ========== Render helpers ========== */
+function makeCard(user){
+  const div = document.createElement('div');
+  div.className = 'glass p-4 rounded-xl card-3d';
+  div.setAttribute('data-tilt', '');
+  div.setAttribute('data-tilt-max', '8');
+  div.setAttribute('data-tilt-speed', '600');
+
+  div.innerHTML = `
+    <div class="flex items-start gap-3">
+      ${ user.avatar_url ?
+  `<div class="flex-shrink-0">
+     <img loading="lazy" alt="${escapeHtml(user.full_name || user.username)}'s avatar"
+          src="${escapeHtml(user.avatar_url)}"
+          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+          class="w-14 h-14 rounded-lg object-cover" />
+     <!-- fallback initials hidden by default -->
+     <div style="display:none" class="w-14 h-14 rounded-lg flex items-center justify-center font-bold text-xl bg-gradient-to-br from-[var(--accent1)] to-[var(--accent2)] text-white">${avatarLetters(user)}</div>
+   </div>`
+  :
+  `<div class="w-14 h-14 rounded-lg flex-shrink-0 bg-gradient-to-br from-[var(--accent1)] to-[var(--accent2)] text-white flex items-center justify-center font-bold text-xl">${avatarLetters(user)}</div>`
+                       }
+
+      <div class="flex-1">
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <div class="font-semibold">${escapeHtml(user.full_name || user.username)}</div>
+            <div class="text-xs text-[var(--muted)]">${escapeHtml(user.languages?.join(', ') || '')}</div>
+          </div>
+          <div class="text-xs text-[var(--muted)]">${user.age ? user.age + 'y' : ''}</div>
+        </div>
+
+        <p class="text-sm text-[var(--muted)] mt-3 line-clamp-4">${escapeHtml(user.bio || '')}</p>
+
+        <div class="mt-3 flex gap-2 flex-wrap">
+          ${(user.skills || []).slice(0,5).map(s => `<span class="chip">${escapeHtml(s)}</span>`).join('')}
+        </div>
+
+        <div class="mt-4 flex gap-2">
+          <button class="connectBtn px-3 py-2 rounded-lg border font-semibold">Connect</button>
+          <button class="chatBtn px-3 py-2 rounded-lg bg-[var(--accent1)] text-white font-semibold">Chat</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // events
+  div.querySelector('.connectBtn').addEventListener('click', () => onConnect(user));
+  div.querySelector('.chatBtn').addEventListener('click', () => openChat(user));
+
+  return div;
+}
+
+function avatarLetters(user){
+  const name = (user.full_name || user.username || 'XS').trim();
+  return name.split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase();
+}
+
+function escapeHtml(txt){
+  if(!txt) return '';
+  return txt.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+}
+
+/* ========== Filters UI population (collect unique skills) ========== */
+function populateSkills(users){
+  const skills = new Set();
+  users.forEach(u => (u.skills || []).forEach(s => skills.add(s)));
+  const arr = Array.from(skills).sort();
+  skillsListEl.innerHTML = arr.slice(0,10).map(s => `<button class="chip skill-btn" data-skill="${s}">${s}</button>`).join('');
+  // attach handlers
+  skillsListEl.querySelectorAll('.skill-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const skill = btn.dataset.skill;
+      if(currentFilters.skills.includes(skill)){
+        currentFilters.skills = currentFilters.skills.filter(x=>x!==skill);
+        btn.classList.remove('ring-2','ring-[var(--accent1)]');
+      } else {
+        currentFilters.skills.push(skill);
+        btn.classList.add('ring-2','ring-[var(--accent1)]');
+      }
+    });
+  });
+}
+
+/* ========== Actions ========== */
+async function loadAndRender(){
+  feedGrid.innerHTML = '';
+  // show skeletons
+  for(let i=0;i<6;i++){
+    const s = document.createElement('div');
+    s.className = 'p-4 rounded-xl glass animate-pulse';
+    s.style.height = '180px';
+    feedGrid.appendChild(s);
+  }
+
+  const data = await fetchFeed({ search: currentFilters.search, age: currentFilters.age, skills: currentFilters.skills, lang: currentFilters.lang });
+  // assume API returns array
+  allUsers = Array.isArray(data) ? data : (data.results || []);
+  feedGrid.innerHTML = '';
+
+  if(allUsers.length === 0){
+    emptyState.classList.remove('hidden');
+    resultsCount.textContent = '0 results';
+    return;
+  } else {
+    emptyState.classList.add('hidden');
+    resultsCount.textContent = `${allUsers.length} people`;
+  }
+
+  // render cards
+  allUsers.forEach((u, idx) => {
+    const c = makeCard(u);
+    feedGrid.appendChild(c);
+  });
+
+  // apply vanilla-tilt on the new cards
+  VanillaTilt.init(document.querySelectorAll('[data-tilt]'), {
+    max: 8, speed: 600, glare: true, "max-glare": 0.08
+  });
+
+  // animate entrance
+  gsap.from('.glass.card-3d', { y: 20, opacity: 0, stagger: 0.06, duration: 0.6, ease: "power3.out" });
+}
+
+/* ========== Connect & Chat (basic prototype) ========== */
+async function onConnect(user){
+  try{
+    // simple POST to create friend request - adapt endpoint to your backend
+    await axios.post('/api/friends/request/', { to_user: user.id }, authHeaders());
+    showToast('Connection request sent');
+  }catch(e){
+    console.error(e);
+    showToast('Could not send request');
+  }
+}
+
+/* Chat popup functions (prototype — replace send/receive with your API) */
+const chatPopup = document.getElementById('chatPopup');
+const chatTitle = document.getElementById('chatTitle');
+const chatBody = document.getElementById('chatBody');
+const chatInput = document.getElementById('chatInput');
+const chatSend = document.getElementById('chatSend');
+const chatClose = document.getElementById('chatClose');
+
+let activeChatUser = null;
+function openChat(user){
+  activeChatUser = user;
+  chatTitle.textContent = `Chat with ${user.full_name || user.username}`;
+  chatBody.innerHTML = `<div class="text-sm text-[var(--muted)]">Loading messages...</div>`;
+  chatPopup.style.display = 'block';
+
+  // fetch messages (prototype) - replace with your endpoint
+  axios.get(`/api/chat/${user.id}/`, authHeaders()).then(res=>{
+    renderMessages(res.data || []);
+  }).catch(e=>{
+    // empty state
+    chatBody.innerHTML = `<div class="text-sm text-[var(--muted)]">No messages yet. Say hi!</div>`;
+  });
+}
+
+chatClose.addEventListener('click', ()=> chatPopup.style.display = 'none');
+
+chatSend.addEventListener('click', async () => {
+  const text = chatInput.value.trim();
+  if(!text) return;
+  // optimism push
+  const bubble = document.createElement('div'); bubble.className = 'p-2 mb-2 bg-[var(--accent1)] text-white rounded-lg text-sm self-end'; bubble.textContent = text;
+  chatBody.appendChild(bubble);
+  chatBody.scrollTop = chatBody.scrollHeight;
+  chatInput.value = '';
+
+  // send to backend (prototype)
+  try{
+    await axios.post(`/api/chat/${activeChatUser.id}/send/`, { message: text }, authHeaders());
+  }catch(e){
+    console.error(e);
+    showToast('Message failed');
+  }
+});
+
+function renderMessages(list){
+  chatBody.innerHTML = '';
+  list.forEach(m=>{
+    const el = document.createElement('div');
+    el.className = 'mb-2';
+    el.innerHTML = `<div class="text-xs text-[var(--muted)]">${m.from_name || m.from}</div><div class="p-2 rounded-lg bg-white border text-sm">${escapeHtml(m.text)}</div>`;
+    chatBody.appendChild(el);
+  });
+  chatBody.scrollTop = chatBody.scrollHeight;
+}
+
+/* ========== UI wiring ========== */
+btnSearch.addEventListener('click', ()=> { currentFilters.search = searchInput.value.trim(); loadAndRender(); });
+searchInput.addEventListener('keydown', (e)=> { if(e.key === 'Enter') { currentFilters.search = searchInput.value.trim(); loadAndRender(); }});
+btnApply.addEventListener('click', ()=> { currentFilters.age = ageFilter.value; loadAndRender(); });
+btnClear.addEventListener('click', ()=> { currentFilters = { search:'', age:'', skills:[], lang:'' }; ageFilter.value=''; searchInput.value=''; loadAndRender(); });
+
+document.getElementById('btnLogout').addEventListener('click', ()=> {
+  localStorage.removeItem('access_token'); localStorage.removeItem('refresh_token'); window.location.href = '/login/';
+});
+
+document.getElementById('btnProfile').addEventListener('click', ()=> {
+  window.location.href = '/profile/'; // implement profile page
+});
+
+/* initial load */
+(async function init(){
+  const me = await fetchProfile();
+  // populate some UI with me if needed
+  document.getElementById('btnProfile').textContent = (me.full_name || me.username);
+  // initial feed
+  const seed = await fetchFeed({});
+  allUsers = Array.isArray(seed) ? seed : (seed.results || []);
+  populateSkills(allUsers);
+  loadAndRender();
+})();
+</script>
+
+</body>
+</html>

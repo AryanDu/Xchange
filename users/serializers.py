@@ -56,6 +56,31 @@ class SignupSerializer(serializers.ModelSerializer):
         user.save()
         return user
     
+# backend/users/serializers.py
+from rest_framework import serializers
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+class UserSerializer(serializers.ModelSerializer):
+    # If skills/languages are JSONField/list, DRF handles them.
+    class Meta:
+        model = User
+        fields = (
+            "id",
+            "username",
+            "full_name",
+            "email",
+            "age",
+            "avatar_url",
+            "bio",
+            "skills",
+            "languages",
+            "is_active",
+        )
+        read_only_fields = ("id", "username", "email", "is_active")
+
+    
     
     
     
