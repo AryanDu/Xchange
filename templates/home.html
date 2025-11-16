@@ -19,6 +19,34 @@
 
   <!-- Heroicons (optional small icons) -->
   <script src="https://unpkg.com/feather-icons"></script>
+<!-- ===== REPLACE YOUR OLD GLOBAL RULE WITH THIS SAFE BLOCK ===== -->
+<style>
+  /* 1) Remove blur/backdrop filters site-wide (but do NOT force opacity) */
+  * {
+    filter: none !important;
+    -webkit-filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    /* NOTE: opacity intentionally NOT touched here */
+  }
+
+  /* 2) Restore natural appearance for card-like elements:
+     If your cards use a different class, add that classname here.
+     This targets common card class name patterns safely. */
+  [class*="card"], [class*="Card"], .user-card, .profile-card, .product-card, .post-card {
+    opacity: unset !important;        /* remove any forced opacity */
+    background-color: rgba(255,255,255,0.98) !important; /* optional: keep card background slightly solid */
+    box-shadow: 0 6px 18px rgba(0,0,0,0.12) !important;  /* optional: restore depth */
+    border-radius: 8px !important; /* optional */
+  }
+
+  /* 3) If some specific element still looks washed, add its selector here:
+     Example:
+     .my-special-card { opacity: unset !important; }
+  */
+</style>
+
+
 
   <style>
     /* Custom theme colors */
@@ -28,159 +56,504 @@
       --bg-start: #ffffff;
       --bg-end: #eafaf0;
       --muted: #6b7b6b;
-      --card-shadow: 0 18px 40px rgba(16,90,45,0.06);
+      --card-shadow: 0 18px 40px rgba(16, 90, 45, 0.06);
     }
 
-    /* page background gradient */
+    /* page background - CLEAN WHITE */
     body{
-      background: radial-gradient(800px 300px at 10% 8%, rgba(39,160,87,0.06), transparent 6%),
-                  linear-gradient(180deg, var(--bg-start), var(--bg-end));
+      background: linear-gradient(180deg, #ffffff, #f5fdf9);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      -webkit-font-smoothing:antialiased;
-      -moz-osx-font-smoothing:grayscale;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
     }
 
-    /* search box shadow and glass */
+    /* Animated gradient background */
+    @keyframes gradientShift {
+      0% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    /* Enhanced glass effect WITHOUT blur on cards */
     .glass {
-      background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(247,255,250,0.75));
-      border-radius: 14px;
-      box-shadow: var(--card-shadow);
-      border: 1px solid rgba(20,60,40,0.03);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(250, 255, 253, 0.92));
+      border-radius: 18px;
+      box-shadow: 
+        0 8px 32px rgba(43, 182, 115, 0.08),
+        inset 0 1px 1px rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(20, 60, 40, 0.08);
+      transition: all 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
     }
 
-    /* 3D depth hover */
+    .glass:hover {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(250, 255, 253, 0.96));
+      box-shadow: 
+        0 12px 48px rgba(43, 182, 115, 0.12),
+        inset 0 1px 1px rgba(255, 255, 255, 0.9);
+      transform: translateY(-2px);
+    }
+
+    /* Premium 3D card effect */
     .card-3d{
       transform-style: preserve-3d;
-      transition: transform .24s cubic-bezier(.2,.9,.3,1), box-shadow .24s;
+      transition: all 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+      background: #ffffff !important;
     }
-    .card-3d:hover{ transform: translateY(-8px) scale(1.006); box-shadow: 0 30px 60px rgba(16,90,45,0.09); }
 
-    /* skill chip */
+    .card-3d::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      transition: left 0.6s cubic-bezier(0.2, 0.9, 0.3, 1);
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .card-3d:hover::before {
+      left: 100%;
+    }
+
+    .card-3d:hover{ 
+      transform: translateY(-12px) scale(1.008) rotateX(2deg);
+      box-shadow: 
+        0 35px 70px rgba(43, 182, 115, 0.15),
+        0 0 40px rgba(43, 182, 115, 0.1);
+    }
+
+    /* Gradient text effect */
+    .gradient-text {
+      background: linear-gradient(135deg, var(--accent1) 0%, var(--accent2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Animated gradient button */
+    .btn-gradient {
+      background: linear-gradient(135deg, var(--accent1) 0%, var(--accent2) 100%);
+      background-size: 200% 200%;
+      animation: gradientFlow 3s ease infinite;
+      transition: all 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+    }
+
+    @keyframes gradientFlow {
+      0% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    .btn-gradient:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 35px rgba(43, 182, 115, 0.3);
+    }
+
+    .btn-gradient:active {
+      transform: translateY(0px);
+    }
+
+    /* skill chip with enhanced styling */
     .chip{
-      background: linear-gradient(90deg, rgba(255,255,255,0.95), rgba(250,255,250,0.9));
-      border: 1px solid rgba(16,90,45,0.06);
-      padding: 6px 10px; border-radius: 999px; font-weight:600; font-size:12px;
-      color: #114b2a;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(250, 255, 250, 0.95));
+      border: 1px solid rgba(43, 182, 115, 0.15);
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--accent1);
+      transition: all 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(43, 182, 115, 0.05);
     }
 
-    /* chat popup */
+    .chip:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(43, 182, 115, 0.1);
+      background: linear-gradient(135deg, rgba(43, 182, 115, 0.1), rgba(23, 168, 90, 0.05));
+    }
+
+    .chip.active {
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      color: white;
+      box-shadow: 0 4px 12px rgba(43, 182, 115, 0.2);
+    }
+
+    /* chat popup with enhanced styling */
     #chatPopup {
-      width: 340px; max-width: calc(100% - 24px);
-      bottom: 26px; right: 26px; position: fixed; z-index: 80;
-      display: none; border-radius: 12px; overflow:hidden;
-      box-shadow: 0 30px 60px rgba(16,90,45,0.12);
-      background: linear-gradient(180deg, #fff, #f7fff8);
-      border: 1px solid rgba(20,60,40,0.04);
+      width: 360px;
+      max-width: calc(100% - 24px);
+      bottom: 26px;
+      right: 26px;
+      position: fixed;
+      z-index: 80;
+      display: none;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 
+        0 25px 50px rgba(16, 90, 45, 0.15),
+        0 0 40px rgba(43, 182, 115, 0.1);
+      background: #ffffff;
+      border: 1px solid rgba(20, 60, 40, 0.08);
+      animation: slideUp 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
     }
-    #chatHeader{ background: linear-gradient(90deg,var(--accent1),var(--accent2)); color:white; padding:10px 14px; display:flex; align-items:center; gap:10px; }
-    #chatBody{ padding:12px; max-height:260px; overflow:auto; }
-    #chatComposer{ display:flex; gap:8px; padding:10px; border-top:1px solid rgba(0,0,0,0.04); }
 
-    /* small responsive tweaks */
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    #chatHeader{
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      color: white;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 4px 12px rgba(43, 182, 115, 0.2);
+    }
+
+    #chatBody{
+      padding: 14px;
+      max-height: 300px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: #ffffff;
+    }
+
+    #chatComposer{
+      display: flex;
+      gap: 8px;
+      padding: 12px;
+      border-top: 1px solid rgba(0, 0, 0, 0.04);
+      background: #ffffff;
+    }
+
+    #chatInput {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(43, 182, 115, 0.15);
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    #chatInput:focus {
+      outline: none;
+      border-color: var(--accent1);
+      box-shadow: 0 0 0 3px rgba(43, 182, 115, 0.1);
+    }
+
+    /* smooth scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(43, 182, 115, 0.2);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(43, 182, 115, 0.4);
+    }
+
+    /* Enhanced header */
+    header {
+      background: #ffffff;
+      border-bottom: 1px solid rgba(43, 182, 115, 0.08);
+      box-shadow: 0 2px 8px rgba(43, 182, 115, 0.04);
+      transition: all 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+    }
+
+    /* smooth page transitions */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    main {
+      animation: fadeIn 0.5s cubic-bezier(0.2, 0.9, 0.3, 1);
+    }
+
+    /* button styling improvements */
+    button {
+      transition: all 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+    }
+
+    .connectBtn,
+    .chatBtn {
+      font-weight: 600;
+      border-radius: 10px;
+      transition: all 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+      cursor: pointer;
+    }
+
+    .connectBtn {
+      background: linear-gradient(135deg, rgba(43, 182, 115, 0.1), rgba(23, 168, 90, 0.05));
+      border: 2px solid var(--accent1);
+      color: var(--accent1);
+    }
+
+    .connectBtn:hover {
+      background: linear-gradient(135deg, rgba(43, 182, 115, 0.15), rgba(23, 168, 90, 0.1));
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(43, 182, 115, 0.15);
+    }
+
+    .chatBtn {
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      color: white;
+      box-shadow: 0 4px 12px rgba(43, 182, 115, 0.2);
+    }
+
+    .chatBtn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(43, 182, 115, 0.3);
+    }
+
+    /* Mobile responsiveness */
     @media (max-width: 900px){
-      #leftCol{ display:none; }
+      #leftCol {
+        display: none;
+      }
+    }
+
+    /* Enhanced badge animation */
+    @keyframes pulse-glow {
+      0%, 100% {
+        box-shadow: 0 0 20px rgba(43, 182, 115, 0.5);
+      }
+      50% {
+        box-shadow: 0 0 30px rgba(43, 182, 115, 0.8);
+      }
+    }
+
+    /* Loading skeleton animation */
+    @keyframes shimmer {
+      0% {
+        background-position: -1000px 0;
+      }
+      100% {
+        background-position: 1000px 0;
+      }
+    }
+
+    .animate-pulse {
+      animation: shimmer 2s infinite;
+      background: linear-gradient(90deg, 
+        rgba(255, 255, 255, 0.05) 0%,
+        rgba(43, 182, 115, 0.1) 50%,
+        rgba(255, 255, 255, 0.05) 100%);
+      background-size: 1000px 100%;
+    }
+
+    /* Text shadow for premium feel */
+    h1,
+    h2 {
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+
+    /* Logo placeholder styling */
+    .logo-placeholder {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(43, 182, 115, 0.1), rgba(23, 168, 90, 0.05));
+      border: 2px dashed rgba(43, 182, 115, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: var(--accent1);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .logo-placeholder:hover {
+      background: linear-gradient(135deg, rgba(43, 182, 115, 0.15), rgba(23, 168, 90, 0.1));
+      border-color: var(--accent1);
+    }
+
+    /* User profile badge styling */
+    .user-badge {
+      background: linear-gradient(135deg, rgba(43, 182, 115, 0.15), rgba(23, 168, 90, 0.08));
+      border: 1px solid rgba(43, 182, 115, 0.2);
+      padding: 8px 14px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--accent1);
+      box-shadow: 0 2px 8px rgba(43, 182, 115, 0.08);
+    }
+
+    /* Header nav button styling */
+    .nav-btn {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--muted);
+      padding: 8px 14px;
+      border-radius: 10px;
+      transition: all 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+    }
+
+    .nav-btn:hover {
+      color: var(--accent1);
+      background: rgba(43, 182, 115, 0.08);
+    }
+
+    .nav-btn.active {
+      color: var(--accent1);
+      background: linear-gradient(135deg, rgba(43, 182, 115, 0.1), rgba(23, 168, 90, 0.05));
     }
   </style>
 </head>
 <body class="min-h-screen">
 
   <!-- Top bar -->
-  <header class="w-full py-4 px-6 flex items-center justify-between">
-    <div class="flex items-center gap-4">
-      <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--accent1)] to-[var(--accent2)] flex items-center justify-center text-white font-bold text-lg shadow-sm">XS</div>
+  <header class="w-full py-4 px-6 flex items-center justify-between sticky top-0 z-50">
+    <div class="flex items-center gap-3">
+      <!-- Logo placeholder for image -->
+      <a href="#" class="logo-placeholder" title="Click to add logo">📷</a>
       <div>
-        <div class="text-xl font-semibold">XCHANGE</div>
+        <div class="text-xl font-semibold gradient-text">XCHANGE</div>
         <div class="text-sm text-[var(--muted)]">Learn together • Connect faster</div>
       </div>
     </div>
 
-    <div class="flex items-center gap-3">
-      <button id="btnHome" class="px-3 py-2 rounded-md text-sm font-semibold hover:brightness-95">Home</button>
-      <button id="btnProfile" class="px-3 py-2 rounded-md text-sm font-semibold">Profile</button>
-      <button id="btnLogout" class="px-4 py-2 rounded-md bg-red-500 text-white font-semibold hover:brightness-95">Logout</button>
+    <div class="flex items-center gap-2">
+      <button id="btnHome" class="nav-btn active" title="Go to Home">Home</button>
+      <button class="nav-btn" title="About our platform">About Us</button>
+      <button class="nav-btn" title="Get help">Help</button>
+      <button class="nav-btn" title="Sign in / Sign up">Login</button>
+      <div class="h-6 w-px bg-[var(--accent1)] bg-opacity-20 mx-1"></div>
+      <div class="user-badge" id="btnProfile" title="View your profile">👤 Profile</div>
+      <button id="btnLogout" class="nav-btn" style="color: #ef4444;" title="Logout">Logout</button>
     </div>
   </header>
 
   <!-- Main layout -->
-  <main class="max-w-6xl mx-auto px-6 pb-20 grid grid-cols-12 gap-6">
-    <!-- Left: filters + search -->
-    <aside id="leftCol" class="col-span-3">
-      <div class="glass p-4 mb-4">
-        <div class="text-sm font-semibold mb-2">Search skills</div>
-        <div class="flex gap-2">
-          <input id="searchInput" type="search" placeholder="Search by skill e.g. Python" class="w-full px-3 py-2 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--accent1)]" />
-          <button id="btnSearch" class="px-3 py-2 rounded-lg bg-gradient-to-br from-[var(--accent1)] to-[var(--accent2)] text-white font-semibold">Go</button>
-        </div>
-      </div>
+  <main class="max-w-7xl mx-auto px-6 pb-20 bg-white">
+    <div class="grid grid-cols-12 gap-8">
+      <!-- Left: filters + search -->
+      <aside id="leftCol" class="col-span-3">
+        <div class="sticky top-24">
+          <div class="glass p-5 mb-5 rounded-lg">
+            <div class="text-sm font-semibold mb-3 gradient-text">🔍 Search Skills</div>
+            <div class="flex gap-2">
+              <input id="searchInput" type="search" placeholder="Search by skill e.g. Python" class="w-full px-4 py-2 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--accent1)] bg-white transition-all" />
+              <button id="btnSearch" class="px-4 py-2 rounded-lg btn-gradient text-white font-semibold">Go</button>
+            </div>
+          </div>
 
-      <div class="glass p-4 mb-4">
-        <div class="text-sm font-semibold mb-2">Filters</div>
+          <div class="glass p-5 mb-5 rounded-lg">
+            <div class="text-sm font-semibold mb-3 gradient-text">⚙️ Filters</div>
 
-        <label class="block mb-2 text-sm">Age</label>
-        <select id="ageFilter" class="w-full px-3 py-2 rounded-lg border">
-          <option value="">Any age</option>
-          <option value="lt18">&lt; 18</option>
-          <option value="18-25">18 - 25</option>
-          <option value="25-35">25 - 35</option>
-          <option value="35+">35+</option>
-        </select>
+            <label class="block mb-3 text-sm font-medium">Age Range</label>
+            <select id="ageFilter" class="w-full px-4 py-2 rounded-lg border border-[var(--accent1)] border-opacity-15 focus:outline-none focus:ring-2 focus:ring-[var(--accent1)] bg-white transition-all">
+              <option value="">Any age</option>
+              <option value="lt18">&lt; 18</option>
+              <option value="18-25">18 - 25</option>
+              <option value="25-35">25 - 35</option>
+              <option value="35+">35+</option>
+            </select>
 
-        <div class="mt-3">
-          <div class="text-sm font-semibold mb-2">Skills (pick)</div>
-          <div id="skillsList" class="grid grid-cols-2 gap-2 text-sm">
-            <!-- dynamically populated -->
+            <div class="mt-4">
+              <div class="text-sm font-semibold mb-3 gradient-text">Skills (Select)</div>
+              <div id="skillsList" class="grid grid-cols-2 gap-2 text-sm">
+                <!-- dynamically populated -->
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <div class="text-sm font-semibold mb-3 gradient-text">Languages</div>
+              <div class="flex gap-2 flex-wrap text-sm" id="languagesList">
+                <button class="chip lang-btn" data-filter-type="lang" data-filter-value="English">English</button>
+                <button class="chip lang-btn" data-filter-type="lang" data-filter-value="Hindi">Hindi</button>
+                <button class="chip lang-btn" data-filter-type="lang" data-filter-value="Spanish">Spanish</button>
+              </div>
+            </div>
+
+            <div class="mt-5 flex gap-2">
+              <button id="btnApply" class="flex-1 px-4 py-2 rounded-lg btn-gradient text-white font-semibold">Apply</button>
+              <button id="btnClear" class="flex-1 px-4 py-2 rounded-lg border-2 border-[var(--accent1)] text-[var(--accent1)] font-semibold hover:bg-[var(--accent1)] hover:text-white transition-all">Clear</button>
+            </div>
+          </div>
+
+          <div class="glass p-5 rounded-lg">
+            <div class="font-semibold mb-2 gradient-text">💡 Suggestions</div>
+            <div class="text-sm text-[var(--muted)]">People you might like — updated based on filters and randomness.</div>
           </div>
         </div>
+      </aside>
 
-        <div class="mt-3">
-          <div class="text-sm font-semibold mb-2">Languages</div>
-          <div class="flex gap-2 flex-wrap text-sm">
-            <button class="chip filter-btn" data-filter-type="lang" data-filter-value="English">English</button>
-            <button class="chip filter-btn" data-filter-type="lang" data-filter-value="Hindi">Hindi</button>
-            <button class="chip filter-btn" data-filter-type="lang" data-filter-value="Spanish">Spanish</button>
+      <!-- Center: feed -->
+      <section id="feedCol" class="col-span-9">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-3xl font-semibold gradient-text">Discover People</h2>
+            <p class="text-[var(--muted)] text-sm mt-1">Meet amazing people with shared interests</p>
           </div>
+          <div class="text-sm font-semibold text-[var(--accent1)]" id="resultsCount">—</div>
         </div>
 
-        <div class="mt-4 flex gap-2">
-          <button id="btnApply" class="w-1/2 px-3 py-2 rounded-lg bg-[var(--accent1)] text-white font-semibold">Apply</button>
-          <button id="btnClear" class="w-1/2 px-3 py-2 rounded-lg border">Clear</button>
+        <div id="feedGrid" class="space-y-5 bg-white">
+          <!-- cards inserted here - ONE PER LINE NOW! -->
         </div>
-      </div>
 
-      <div class="glass p-4">
-        <div class="font-semibold mb-2">Suggestions</div>
-        <div class="text-sm text-[var(--muted)]">People you might like — updated based on filters and randomness.</div>
-      </div>
-    </aside>
-
-    <!-- Center: feed -->
-    <section id="feedCol" class="col-span-9 space-y-4">
-      <div class="flex items-center justify-between">
-        <h2 class="text-2xl font-semibold">Discover People</h2>
-        <div class="text-sm text-[var(--muted)]" id="resultsCount">—</div>
-      </div>
-
-      <div id="feedGrid" class="grid grid-cols-3 gap-6">
-        <!-- cards inserted here -->
-      </div>
-
-      <div id="emptyState" class="hidden text-center text-[var(--muted)] py-12">
-        No people found. Try clearing filters.
-      </div>
-    </section>
+        <div id="emptyState" class="hidden text-center text-[var(--muted)] py-16">
+          <div class="text-5xl mb-4">🔍</div>
+          <div class="text-lg font-semibold mb-2">No people found</div>
+          <p class="text-sm">Try clearing filters or searching with different keywords</p>
+        </div>
+      </section>
+    </div>
   </main>
 
   <!-- Chat popup (prototype) -->
-  <div id="chatPopup" class="rounded-lg">
+  <div id="chatPopup" class="rounded-xl">
     <div id="chatHeader">
-      <div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;font-weight:700">XS</div>
-      <div id="chatTitle" style="font-weight:700">Chat</div>
-      <div style="margin-left:auto;cursor:pointer" id="chatClose">✕</div>
+      <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(255, 255, 255, 0.2); display: flex; align-items: center; justify-content: center; font-weight: 700; color: white;">XS</div>
+      <div id="chatTitle" style="font-weight: 700; flex: 1;">Chat</div>
+      <div style="cursor: pointer; font-size: 20px; line-height: 1; color: white; opacity: 0.7; transition: opacity 0.2s;" id="chatClose">✕</div>
     </div>
     <div id="chatBody"></div>
     <div id="chatComposer">
-      <input id="chatInput" class="flex-1 px-3 py-2 rounded-lg border" placeholder="Write a message..." />
-      <button id="chatSend" class="px-3 py-2 rounded-lg bg-[var(--accent1)] text-white">Send</button>
+      <input id="chatInput" class="flex-1 px-3 py-2 rounded-lg border border-[var(--accent1)] border-opacity-15" placeholder="Write a message..." />
+      <button id="chatSend" class="px-4 py-2 rounded-lg btn-gradient text-white font-semibold">Send</button>
     </div>
   </div>
 
@@ -193,9 +566,12 @@ axios.defaults.baseURL = API_BASE;
 function showToast(msg, type='info'){
   const el = document.createElement('div');
   el.textContent = msg;
-  el.className = 'fixed right-6 bottom-6 px-4 py-2 rounded shadow-md bg-white border';
+  el.className = 'fixed right-6 bottom-6 px-5 py-3 rounded-lg shadow-lg bg-white border border-[var(--accent1)] border-opacity-20 font-semibold text-sm z-100';
   document.body.appendChild(el);
-  setTimeout(()=> el.remove(), 2400);
+  gsap.from(el, { opacity: 0, y: 20, duration: 0.3 });
+  setTimeout(()=> {
+    gsap.to(el, { opacity: 0, y: 20, duration: 0.3, onComplete: ()=> el.remove() });
+  }, 2400);
 }
 
 /* Redirect to login if not logged in */
@@ -219,7 +595,7 @@ function showToast(msg, type='info'){
     // token ok -> proceed to load feed
     const me = await res.json();
     // set profile UI values then load feed
-    document.getElementById('btnProfile').textContent = (me.full_name || me.username);
+    document.getElementById('btnProfile').textContent = '👤 ' + (me.full_name || me.username);
     await loadAndRender(); // or fetchProfile(); load feed after this
   }catch(e){
     // network or server error -> go to login (or show message)
@@ -243,6 +619,7 @@ const btnClear = document.getElementById('btnClear');
 const ageFilter = document.getElementById('ageFilter');
 const skillsListEl = document.getElementById('skillsList');
 const emptyState = document.getElementById('emptyState');
+const languagesListEl = document.getElementById('languagesList');
 
 let allUsers = [];      // raw users from API
 let currentFilters = { search: '', age: '', skills: [], lang: '' };
@@ -282,44 +659,45 @@ async function fetchFeed(params = {}){
 /* ========== Render helpers ========== */
 function makeCard(user){
   const div = document.createElement('div');
-  div.className = 'glass p-4 rounded-xl card-3d';
+  div.className = 'glass p-6 rounded-2xl card-3d';
   div.setAttribute('data-tilt', '');
-  div.setAttribute('data-tilt-max', '8');
+  div.setAttribute('data-tilt-max', '6');
   div.setAttribute('data-tilt-speed', '600');
+  div.setAttribute('data-tilt-glare', 'true');
+  div.setAttribute('data-tilt-max-glare', '0.12');
 
   div.innerHTML = `
-    <div class="flex items-start gap-3">
+    <div class="flex items-start gap-5">
       ${ user.avatar_url ?
   `<div class="flex-shrink-0">
      <img loading="lazy" alt="${escapeHtml(user.full_name || user.username)}'s avatar"
           src="${escapeHtml(user.avatar_url)}"
           onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-          class="w-14 h-14 rounded-lg object-cover" />
+          class="w-20 h-20 rounded-2xl object-cover shadow-lg" />
      <!-- fallback initials hidden by default -->
-     <div style="display:none" class="w-14 h-14 rounded-lg flex items-center justify-center font-bold text-xl bg-gradient-to-br from-[var(--accent1)] to-[var(--accent2)] text-white">${avatarLetters(user)}</div>
+     <div style="display: none;" class="w-20 h-20 rounded-2xl flex items-center justify-center font-bold text-2xl btn-gradient text-white shadow-lg">${avatarLetters(user)}</div>
    </div>`
   :
-  `<div class="w-14 h-14 rounded-lg flex-shrink-0 bg-gradient-to-br from-[var(--accent1)] to-[var(--accent2)] text-white flex items-center justify-center font-bold text-xl">${avatarLetters(user)}</div>`
+  `<div class="w-20 h-20 rounded-2xl flex-shrink-0 btn-gradient text-white flex items-center justify-center font-bold text-2xl shadow-lg">${avatarLetters(user)}</div>`
                        }
 
       <div class="flex-1">
-        <div class="flex items-center justify-between gap-2">
+        <div class="flex items-start justify-between gap-3 mb-2">
           <div>
-            <div class="font-semibold">${escapeHtml(user.full_name || user.username)}</div>
-            <div class="text-xs text-[var(--muted)]">${escapeHtml(user.languages?.join(', ') || '')}</div>
+            <div class="font-bold text-lg" style="color: #1a1a1a;">${escapeHtml(user.full_name || user.username)}</div>
+            <div class="text-xs text-[var(--muted)] font-medium">${escapeHtml(user.languages?.join(', ') || '—')}</div>
           </div>
-          <div class="text-xs text-[var(--muted)]">${user.age ? user.age + 'y' : ''}</div>
         </div>
 
-        <p class="text-sm text-[var(--muted)] mt-3 line-clamp-4">${escapeHtml(user.bio || '')}</p>
+        <p class="text-sm text-[var(--muted)] mt-3 leading-relaxed line-clamp-3" style="color: #555;">${escapeHtml(user.bio || 'No bio added yet')}</p>
 
-        <div class="mt-3 flex gap-2 flex-wrap">
-          ${(user.skills || []).slice(0,5).map(s => `<span class="chip">${escapeHtml(s)}</span>`).join('')}
+        <div class="mt-4 flex gap-2 flex-wrap">
+          ${(user.skills || []).slice(0, 6).map(s => `<span class="chip">${escapeHtml(s)}</span>`).join('')}
         </div>
 
-        <div class="mt-4 flex gap-2">
-          <button class="connectBtn px-3 py-2 rounded-lg border font-semibold">Connect</button>
-          <button class="chatBtn px-3 py-2 rounded-lg bg-[var(--accent1)] text-white font-semibold">Chat</button>
+        <div class="mt-5 flex gap-3">
+          <button class="connectBtn flex-1 px-4 py-2 rounded-lg font-semibold">+ Connect</button>
+          <button class="chatBtn flex-1 px-4 py-2 rounded-lg text-white font-semibold">💬 Chat</button>
         </div>
       </div>
     </div>
@@ -334,7 +712,7 @@ function makeCard(user){
 
 function avatarLetters(user){
   const name = (user.full_name || user.username || 'XS').trim();
-  return name.split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase();
+  return name.split(' ').map(x=>x[0]).slice(0, 2).join('').toUpperCase();
 }
 
 function escapeHtml(txt){
@@ -347,17 +725,36 @@ function populateSkills(users){
   const skills = new Set();
   users.forEach(u => (u.skills || []).forEach(s => skills.add(s)));
   const arr = Array.from(skills).sort();
-  skillsListEl.innerHTML = arr.slice(0,10).map(s => `<button class="chip skill-btn" data-skill="${s}">${s}</button>`).join('');
+  skillsListEl.innerHTML = arr.slice(0, 10).map(s => `<button class="chip skill-btn" data-skill="${s}">${s}</button>`).join('');
   // attach handlers
   skillsListEl.querySelectorAll('.skill-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const skill = btn.dataset.skill;
       if(currentFilters.skills.includes(skill)){
         currentFilters.skills = currentFilters.skills.filter(x=>x!==skill);
-        btn.classList.remove('ring-2','ring-[var(--accent1)]');
+        btn.classList.remove('active');
       } else {
         currentFilters.skills.push(skill);
-        btn.classList.add('ring-2','ring-[var(--accent1)]');
+        btn.classList.add('active');
+      }
+    });
+  });
+}
+
+/* ========== Language filter handler ========== */
+function setupLanguageFilters(){
+  languagesListEl.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const lang = btn.dataset.filterValue;
+      if(currentFilters.lang === lang){
+        currentFilters.lang = '';
+        btn.classList.remove('active');
+      } else {
+        // Remove active class from all language buttons
+        languagesListEl.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+        currentFilters.lang = lang;
+        btn.classList.add('active');
       }
     });
   });
@@ -367,10 +764,10 @@ function populateSkills(users){
 async function loadAndRender(){
   feedGrid.innerHTML = '';
   // show skeletons
-  for(let i=0;i<6;i++){
+  for(let i=0;i<4;i++){
     const s = document.createElement('div');
-    s.className = 'p-4 rounded-xl glass animate-pulse';
-    s.style.height = '180px';
+    s.className = 'p-6 rounded-2xl glass animate-pulse';
+    s.style.height = '200px';
     feedGrid.appendChild(s);
   }
 
@@ -396,11 +793,11 @@ async function loadAndRender(){
 
   // apply vanilla-tilt on the new cards
   VanillaTilt.init(document.querySelectorAll('[data-tilt]'), {
-    max: 8, speed: 600, glare: true, "max-glare": 0.08
+    max: 6, speed: 600, glare: true, "max-glare": 0.12, scale: 1.02
   });
 
   // animate entrance
-  gsap.from('.glass.card-3d', { y: 20, opacity: 0, stagger: 0.06, duration: 0.6, ease: "power3.out" });
+  gsap.from('.glass.card-3d', { y: 30, opacity: 0, stagger: 0.08, duration: 0.6, ease: "power3.out" });
 }
 
 /* ========== Connect & Chat (basic prototype) ========== */
@@ -408,7 +805,7 @@ async function onConnect(user){
   try{
     // simple POST to create friend request - adapt endpoint to your backend
     await axios.post('/api/friends/request/', { to_user: user.id }, authHeaders());
-    showToast('Connection request sent');
+    showToast('✓ Connection request sent!');
   }catch(e){
     console.error(e);
     showToast('Could not send request');
@@ -427,7 +824,7 @@ let activeChatUser = null;
 function openChat(user){
   activeChatUser = user;
   chatTitle.textContent = `Chat with ${user.full_name || user.username}`;
-  chatBody.innerHTML = `<div class="text-sm text-[var(--muted)]">Loading messages...</div>`;
+  chatBody.innerHTML = `<div class="text-sm text-[var(--muted)] text-center">Loading messages...</div>`;
   chatPopup.style.display = 'block';
 
   // fetch messages (prototype) - replace with your endpoint
@@ -435,7 +832,7 @@ function openChat(user){
     renderMessages(res.data || []);
   }).catch(e=>{
     // empty state
-    chatBody.innerHTML = `<div class="text-sm text-[var(--muted)]">No messages yet. Say hi!</div>`;
+    chatBody.innerHTML = `<div class="text-sm text-[var(--muted)] text-center">No messages yet. Say hi!</div>`;
   });
 }
 
@@ -445,7 +842,9 @@ chatSend.addEventListener('click', async () => {
   const text = chatInput.value.trim();
   if(!text) return;
   // optimism push
-  const bubble = document.createElement('div'); bubble.className = 'p-2 mb-2 bg-[var(--accent1)] text-white rounded-lg text-sm self-end'; bubble.textContent = text;
+  const bubble = document.createElement('div');
+  bubble.className = 'p-3 rounded-xl text-sm self-end text-white btn-gradient';
+  bubble.textContent = text;
   chatBody.appendChild(bubble);
   chatBody.scrollTop = chatBody.scrollHeight;
   chatInput.value = '';
@@ -464,7 +863,7 @@ function renderMessages(list){
   list.forEach(m=>{
     const el = document.createElement('div');
     el.className = 'mb-2';
-    el.innerHTML = `<div class="text-xs text-[var(--muted)]">${m.from_name || m.from}</div><div class="p-2 rounded-lg bg-white border text-sm">${escapeHtml(m.text)}</div>`;
+    el.innerHTML = `<div class="text-xs text-[var(--muted)] font-semibold mb-1">${m.from_name || m.from}</div><div class="p-3 rounded-xl bg-white border border-[var(--accent1)] border-opacity-10 text-sm">${escapeHtml(m.text)}</div>`;
     chatBody.appendChild(el);
   });
   chatBody.scrollTop = chatBody.scrollHeight;
@@ -474,7 +873,14 @@ function renderMessages(list){
 btnSearch.addEventListener('click', ()=> { currentFilters.search = searchInput.value.trim(); loadAndRender(); });
 searchInput.addEventListener('keydown', (e)=> { if(e.key === 'Enter') { currentFilters.search = searchInput.value.trim(); loadAndRender(); }});
 btnApply.addEventListener('click', ()=> { currentFilters.age = ageFilter.value; loadAndRender(); });
-btnClear.addEventListener('click', ()=> { currentFilters = { search:'', age:'', skills:[], lang:'' }; ageFilter.value=''; searchInput.value=''; loadAndRender(); });
+btnClear.addEventListener('click', ()=> { 
+  currentFilters = { search:'', age:'', skills:[], lang:'' }; 
+  ageFilter.value=''; 
+  searchInput.value=''; 
+  skillsListEl.querySelectorAll('.chip').forEach(c=>c.classList.remove('active')); 
+  languagesListEl.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  loadAndRender(); 
+});
 
 document.getElementById('btnLogout').addEventListener('click', ()=> {
   localStorage.removeItem('access_token'); localStorage.removeItem('refresh_token'); window.location.href = '/login/';
@@ -488,11 +894,12 @@ document.getElementById('btnProfile').addEventListener('click', ()=> {
 (async function init(){
   const me = await fetchProfile();
   // populate some UI with me if needed
-  document.getElementById('btnProfile').textContent = (me.full_name || me.username);
+  document.getElementById('btnProfile').textContent = '👤 ' + (me.full_name || me.username);
   // initial feed
   const seed = await fetchFeed({});
   allUsers = Array.isArray(seed) ? seed : (seed.results || []);
   populateSkills(allUsers);
+  setupLanguageFilters();
   loadAndRender();
 })();
 </script>
