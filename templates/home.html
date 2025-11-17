@@ -454,14 +454,37 @@
       </div>
     </div>
 
-    <div class="flex items-center gap-2">
-      <button id="btnHome" class="nav-btn active" title="Go to Home">Home</button>
-      <button class="nav-btn" title="About our platform">About Us</button>
-      <button class="nav-btn" title="Get help">Help</button>
-      <button class="nav-btn" title="Sign in / Sign up">Login</button>
-      <div class="h-6 w-px bg-[var(--accent1)] bg-opacity-20 mx-1"></div>
-      <div class="user-badge" id="btnProfile" title="View your profile">👤 Profile</div>
-      <button id="btnLogout" class="nav-btn" style="color: #ef4444;" title="Logout">Logout</button>
+    <!-- NAV + RIGHT ACTIONS -->
+    <div class="flex items-center gap-2 w-full justify-end">
+      <div class="flex items-center gap-2 mr-auto">
+        <button id="btnHome" class="nav-btn active" title="Go to Home">Home</button>
+        <button class="nav-btn" title="About our platform">About Us</button>
+        <button class="nav-btn" title="Get help">Help</button>
+        <button class="nav-btn" title="Sign in / Sign up">Signup</button>
+      </div>
+
+      <div class="h-6 w-px bg-[var(--accent1)] bg-opacity-20 mx-3"></div>
+
+      <!-- Right-most stacked area: profile, friends, notifications, logout -->
+      <div class="flex items-center gap-3">
+        <div class="user-badge" id="btnProfile" title="View your profile">👤 Profile</div>
+
+        <!-- Friends button with count -->
+        <button id="btnFriends" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold">
+          <span class="hidden md:inline">My Friends</span>
+          <span id="friendsCount" class="ml-1 text-xs text-[var(--muted)]">0</span>
+        </button>
+
+        <!-- Notifications bell with badge -->
+        <div class="relative">
+          <button id="notifBtn" class="px-3 py-2 rounded-md text-sm font-semibold relative" title="Notifications">
+            🔔
+            <span id="notifBadge" class="hidden absolute -right-1 -top-1 bg-red-500 text-white rounded-full px-1 text-xs">0</span>
+          </button>
+        </div>
+
+        <button id="btnLogout" class="nav-btn" style="color: #ef4444;" title="Logout">Logout</button>
+      </div>
     </div>
   </header>
 
@@ -543,6 +566,18 @@
     </div>
   </main>
 
+  <!-- Notifications slide-over (inserted) -->
+  <div id="notifPanel" class="fixed right-0 top-0 h-full w-96 bg-white shadow-xl transform translate-x-full transition-transform z-50 overflow-auto">
+    <div class="p-4 border-b flex items-center justify-between">
+      <div class="font-semibold">Notifications</div>
+      <div><button id="notifClose" class="text-sm text-[var(--muted)]">Close</button></div>
+    </div>
+    <div id="notifList" class="p-4 space-y-3">
+      <!-- items injected here -->
+    </div>
+    <div class="p-4 border-t text-sm text-[var(--muted)]">You will see friend requests & activity here.</div>
+  </div>
+
   <!-- Chat popup (prototype) -->
   <div id="chatPopup" class="rounded-xl">
     <div id="chatHeader">
@@ -558,58 +593,45 @@
   </div>
 
 <script>
-/* ========== Config & Helpers ========== */
-const API_BASE = 'http://127.0.0.1:8000';  // change if needed
+/* ===========================
+   XCHANGE home page script
+   This script replaces the previous JS block. It is defensive,
+   integrates friends + notifications, and keeps the rest of the page intact.
+   =========================== */
+
+/* ---------- Config ---------- */
+const API_BASE = 'http://127.0.0.1:8000';
 axios.defaults.baseURL = API_BASE;
 
-
-function showToast(msg, type='info'){
-  const el = document.createElement('div');
-  el.textContent = msg;
-  el.className = 'fixed right-6 bottom-6 px-5 py-3 rounded-lg shadow-lg bg-white border border-[var(--accent1)] border-opacity-20 font-semibold text-sm z-100';
-  document.body.appendChild(el);
-  gsap.from(el, { opacity: 0, y: 20, duration: 0.3 });
-  setTimeout(()=> {
-    gsap.to(el, { opacity: 0, y: 20, duration: 0.3, onComplete: ()=> el.remove() });
-  }, 2400);
+/* ---------- Helpers ---------- */
+function showToast(msg, ttl = 2200) {
+  try {
+    const el = document.createElement('div');
+    el.textContent = msg;
+    el.style.position = 'fixed';
+    el.style.right = '18px';
+    el.style.bottom = '18px';
+    el.style.padding = '10px 14px';
+    el.style.borderRadius = '10px';
+    el.style.background = 'white';
+    el.style.boxShadow = '0 10px 30px rgba(10,40,20,0.08)';
+    el.style.zIndex = 9999;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), ttl);
+  } catch (e) { console.log('toast', e); }
 }
 
-/* Redirect to login if not logged in */
-(async function(){
-  const access = localStorage.getItem('access_token');
-  if(!access){
-    // no token -> go to login
-    window.location.href = '/login/';
-    return;
-  }
-  // try a lightweight profile fetch first (no UI flash)
-  try{
-    const res = await fetch(API_BASE + '/api/me/', {
-      headers: { 'Authorization': 'Bearer ' + access }
-    });
-    if(!res.ok){
-      // token invalid/expired -> redirect to login
-      window.location.href = '/login/';
-      return;
-    }
-    // token ok -> proceed to load feed
-    const me = await res.json();
-    // set profile UI values then load feed
-    document.getElementById('btnProfile').textContent = '👤 ' + (me.full_name || me.username);
-    await loadAndRender(); // or fetchProfile(); load feed after this
-  }catch(e){
-    // network or server error -> go to login (or show message)
-    console.error(e);
-    window.location.href = '/login/';
-  }
-})();
-
-/* Helper to set auth header for axios */
-function authHeaders(){
-  return { headers: { Authorization: 'Bearer ' + localStorage.getItem('access_token') } };
+function escapeHtml(txt) {
+  if (!txt) return '';
+  return String(txt).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
 }
 
-/* ========= UI refs ========= */
+function authHeaders() {
+  const token = localStorage.getItem('access_token');
+  return { headers: { Authorization: 'Bearer ' + (token || '') } };
+}
+
+/* ---------- DOM refs (graceful selection) ---------- */
 const feedGrid = document.getElementById('feedGrid');
 const resultsCount = document.getElementById('resultsCount');
 const searchInput = document.getElementById('searchInput');
@@ -619,268 +641,328 @@ const btnClear = document.getElementById('btnClear');
 const ageFilter = document.getElementById('ageFilter');
 const skillsListEl = document.getElementById('skillsList');
 const emptyState = document.getElementById('emptyState');
-const languagesListEl = document.getElementById('languagesList');
-
-let allUsers = [];      // raw users from API
-let currentFilters = { search: '', age: '', skills: [], lang: '' };
-
-/* ========== Fetch current user & feed ========== */
-async function fetchProfile(){
-  try{
-    const res = await axios.get('/api/me/', authHeaders());
-    return res.data;
-  }catch(e){
-    console.error(e);
-    // token invalid -> force login
-    window.location.href = '/login/';
-  }
-}
-
-async function fetchFeed(params = {}){
-  // params: { search, age, skills, lang, page }
-  try{
-    // build query string
-    const q = new URLSearchParams();
-    if(params.search) q.append('search', params.search);
-    if(params.age) q.append('age', params.age);
-    if(params.lang) q.append('lang', params.lang);
-    if(params.skills && params.skills.length) q.append('skills', params.skills.join(','));
-    const url = '/api/users/?' + q.toString();
-    const res = await axios.get(url, authHeaders());
-    // if your users list looks different, adapt accordingly
-    return res.data;
-  }catch(err){
-    console.error(err);
-    showToast('Could not load feed — server error', 'error');
-    return [];
-  }
-}
-
-/* ========== Render helpers ========== */
-function makeCard(user){
-  const div = document.createElement('div');
-  div.className = 'glass p-6 rounded-2xl card-3d';
-  div.setAttribute('data-tilt', '');
-  div.setAttribute('data-tilt-max', '6');
-  div.setAttribute('data-tilt-speed', '600');
-  div.setAttribute('data-tilt-glare', 'true');
-  div.setAttribute('data-tilt-max-glare', '0.12');
-
-  div.innerHTML = `
-    <div class="flex items-start gap-5">
-      ${ user.avatar_url ?
-  `<div class="flex-shrink-0">
-     <img loading="lazy" alt="${escapeHtml(user.full_name || user.username)}'s avatar"
-          src="${escapeHtml(user.avatar_url)}"
-          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-          class="w-20 h-20 rounded-2xl object-cover shadow-lg" />
-     <!-- fallback initials hidden by default -->
-     <div style="display: none;" class="w-20 h-20 rounded-2xl flex items-center justify-center font-bold text-2xl btn-gradient text-white shadow-lg">${avatarLetters(user)}</div>
-   </div>`
-  :
-  `<div class="w-20 h-20 rounded-2xl flex-shrink-0 btn-gradient text-white flex items-center justify-center font-bold text-2xl shadow-lg">${avatarLetters(user)}</div>`
-                       }
-
-      <div class="flex-1">
-        <div class="flex items-start justify-between gap-3 mb-2">
-          <div>
-            <div class="font-bold text-lg" style="color: #1a1a1a;">${escapeHtml(user.full_name || user.username)}</div>
-            <div class="text-xs text-[var(--muted)] font-medium">${escapeHtml(user.languages?.join(', ') || '—')}</div>
-          </div>
-        </div>
-
-        <p class="text-sm text-[var(--muted)] mt-3 leading-relaxed line-clamp-3" style="color: #555;">${escapeHtml(user.bio || 'No bio added yet')}</p>
-
-        <div class="mt-4 flex gap-2 flex-wrap">
-          ${(user.skills || []).slice(0, 6).map(s => `<span class="chip">${escapeHtml(s)}</span>`).join('')}
-        </div>
-
-        <div class="mt-5 flex gap-3">
-          <button class="connectBtn flex-1 px-4 py-2 rounded-lg font-semibold">+ Connect</button>
-          <button class="chatBtn flex-1 px-4 py-2 rounded-lg text-white font-semibold">💬 Chat</button>
-        </div>
-      </div>
-    </div>
-  `;
-
-  // events
-  div.querySelector('.connectBtn').addEventListener('click', () => onConnect(user));
-  div.querySelector('.chatBtn').addEventListener('click', () => openChat(user));
-
-  return div;
-}
-
-function avatarLetters(user){
-  const name = (user.full_name || user.username || 'XS').trim();
-  return name.split(' ').map(x=>x[0]).slice(0, 2).join('').toUpperCase();
-}
-
-function escapeHtml(txt){
-  if(!txt) return '';
-  return txt.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-}
-
-/* ========== Filters UI population (collect unique skills) ========== */
-function populateSkills(users){
-  const skills = new Set();
-  users.forEach(u => (u.skills || []).forEach(s => skills.add(s)));
-  const arr = Array.from(skills).sort();
-  skillsListEl.innerHTML = arr.slice(0, 10).map(s => `<button class="chip skill-btn" data-skill="${s}">${s}</button>`).join('');
-  // attach handlers
-  skillsListEl.querySelectorAll('.skill-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const skill = btn.dataset.skill;
-      if(currentFilters.skills.includes(skill)){
-        currentFilters.skills = currentFilters.skills.filter(x=>x!==skill);
-        btn.classList.remove('active');
-      } else {
-        currentFilters.skills.push(skill);
-        btn.classList.add('active');
-      }
-    });
-  });
-}
-
-/* ========== Language filter handler ========== */
-function setupLanguageFilters(){
-  languagesListEl.querySelectorAll('.lang-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const lang = btn.dataset.filterValue;
-      if(currentFilters.lang === lang){
-        currentFilters.lang = '';
-        btn.classList.remove('active');
-      } else {
-        // Remove active class from all language buttons
-        languagesListEl.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-        currentFilters.lang = lang;
-        btn.classList.add('active');
-      }
-    });
-  });
-}
-
-/* ========== Actions ========== */
-async function loadAndRender(){
-  feedGrid.innerHTML = '';
-  // show skeletons
-  for(let i=0;i<4;i++){
-    const s = document.createElement('div');
-    s.className = 'p-6 rounded-2xl glass animate-pulse';
-    s.style.height = '200px';
-    feedGrid.appendChild(s);
-  }
-
-  const data = await fetchFeed({ search: currentFilters.search, age: currentFilters.age, skills: currentFilters.skills, lang: currentFilters.lang });
-  // assume API returns array
-  allUsers = Array.isArray(data) ? data : (data.results || []);
-  feedGrid.innerHTML = '';
-
-  if(allUsers.length === 0){
-    emptyState.classList.remove('hidden');
-    resultsCount.textContent = '0 results';
-    return;
-  } else {
-    emptyState.classList.add('hidden');
-    resultsCount.textContent = `${allUsers.length} people`;
-  }
-
-  // render cards
-  allUsers.forEach((u, idx) => {
-    const c = makeCard(u);
-    feedGrid.appendChild(c);
-  });
-
-  // apply vanilla-tilt on the new cards
-  VanillaTilt.init(document.querySelectorAll('[data-tilt]'), {
-    max: 6, speed: 600, glare: true, "max-glare": 0.12, scale: 1.02
-  });
-
-  // animate entrance
-  gsap.from('.glass.card-3d', { y: 30, opacity: 0, stagger: 0.08, duration: 0.6, ease: "power3.out" });
-}
-
-/* ========== Connect & Chat (basic prototype) ========== */
-async function onConnect(user){
-  try{
-    // simple POST to create friend request - adapt endpoint to your backend
-    await axios.post('/api/friends/request/', { to_user: user.id }, authHeaders());
-    showToast('✓ Connection request sent!');
-  }catch(e){
-    console.error(e);
-    showToast('Could not send request');
-  }
-}
-
-/* Chat popup functions (prototype — replace send/receive with your API) */
+const notifBtn = document.getElementById('notifBtn');
+const notifPanel = document.getElementById('notifPanel');
+const notifClose = document.getElementById('notifClose');
+const notifBadge = document.getElementById('notifBadge');
+const notifList = document.getElementById('notifList');
+const btnFriends = document.getElementById('btnFriends');
+const friendsCountEl = document.getElementById('friendsCount');
 const chatPopup = document.getElementById('chatPopup');
-const chatTitle = document.getElementById('chatTitle');
 const chatBody = document.getElementById('chatBody');
+const chatTitle = document.getElementById('chatTitle');
 const chatInput = document.getElementById('chatInput');
 const chatSend = document.getElementById('chatSend');
 const chatClose = document.getElementById('chatClose');
 
+let allUsers = [];
+let currentFilters = { search: '', age: '', skills: [], lang: '' };
 let activeChatUser = null;
-function openChat(user){
-  activeChatUser = user;
-  chatTitle.textContent = `Chat with ${user.full_name || user.username}`;
-  chatBody.innerHTML = `<div class="text-sm text-[var(--muted)] text-center">Loading messages...</div>`;
-  chatPopup.style.display = 'block';
 
-  // fetch messages (prototype) - replace with your endpoint
-  axios.get(`/api/chat/${user.id}/`, authHeaders()).then(res=>{
-    renderMessages(res.data || []);
-  }).catch(e=>{
-    // empty state
-    chatBody.innerHTML = `<div class="text-sm text-[var(--muted)] text-center">No messages yet. Say hi!</div>`;
+/* ---------- Avatar helper ---------- */
+function avatarLetters(user) {
+  const name = (user.full_name || user.username || 'XS').trim();
+  return name.split(' ').map(x => x[0]).slice(0,2).join('').toUpperCase();
+}
+
+/* ---------- makeCard (returns element) ---------- */
+function makeCard(user) {
+  const div = document.createElement('div');
+  div.className = 'glass p-4 rounded-xl card-3d';
+  div.setAttribute('data-tilt', '');
+  div.setAttribute('data-tilt-max', '8');
+  div.setAttribute('data-tilt-speed', '600');
+
+  // Avatar HTML with fallback
+  const avatarHtml = user.avatar_url ? `
+    <div style="display:inline-block;position:relative">
+      <img loading="lazy" alt="${escapeHtml(user.full_name || user.username)} avatar"
+           src="${escapeHtml(user.avatar_url)}"
+           onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+           class="w-14 h-14 rounded-lg object-cover" />
+      <div style="display:none" class="w-14 h-14 rounded-lg flex items-center justify-center font-bold text-xl bg-gradient-to-br from-[var(--accent1)] to-[var(--accent2)] text-white">
+        ${avatarLetters(user)}
+      </div>
+    </div>
+  ` : `<div class="w-14 h-14 rounded-lg flex-shrink-0 bg-gradient-to-br from-[var(--accent1)] to-[var(--accent2)] text-white flex items-center justify-center font-bold text-xl">${avatarLetters(user)}</div>`;
+
+  div.innerHTML = `
+    <div class="flex items-start gap-3">
+      ${avatarHtml}
+      <div class="flex-1">
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <div class="font-semibold">${escapeHtml(user.full_name || user.username)}</div>
+            <div class="text-xs text-[var(--muted)]">${escapeHtml((user.languages||[]).join(', '))}</div>
+          </div>
+          <div class="text-xs text-[var(--muted)]">${user.age ? user.age + 'y' : ''}</div>
+        </div>
+
+        <p class="text-sm text-[var(--muted)] mt-3 line-clamp-4">${escapeHtml(user.bio || '')}</p>
+
+        <div class="mt-3 flex gap-2 flex-wrap">
+          ${(user.skills || []).slice(0,5).map(s => `<span class="chip">${escapeHtml(s)}</span>`).join('')}
+        </div>
+
+        <div class="mt-4 flex gap-2">
+          <button class="connectBtn px-3 py-2 rounded-lg border font-semibold">Connect</button>
+          <button class="chatBtn px-3 py-2 rounded-lg bg-[var(--accent1)] text-white font-semibold">Chat</button>
+        </div>
+      </div>
+    </div>
+  `;
+  return div;
+}
+
+/* ---------- fetchProfile & fetchFeed ---------- */
+async function fetchProfile() {
+  try {
+    const res = await axios.get('/api/me/', authHeaders());
+    return res.data;
+  } catch (e) {
+    console.error('fetchProfile error', e);
+    throw e;
+  }
+}
+
+async function fetchFeed(params = {}) {
+  try {
+    const q = new URLSearchParams();
+    if (params.search) q.append('search', params.search);
+    if (params.age) q.append('age', params.age);
+    if (params.lang) q.append('lang', params.lang);
+    if (params.skills && params.skills.length) q.append('skills', params.skills.join(','));
+    const url = '/api/users/?' + q.toString();
+    const res = await axios.get(url, authHeaders());
+    return res.data;
+  } catch (err) {
+    console.error('fetchFeed error', err);
+    return [];
+  }
+}
+
+/* ---------- populateSkills ---------- */
+function populateSkills(users) {
+  if (!skillsListEl) return;
+  const set = new Set();
+  users.forEach(u => (u.skills || []).forEach(s => set.add(s)));
+  const arr = Array.from(set).sort();
+  skillsListEl.innerHTML = arr.slice(0,10).map(s => `<button class="chip skill-btn" data-skill="${escapeHtml(s)}">${escapeHtml(s)}</button>`).join('');
+  skillsListEl.querySelectorAll('.skill-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const skill = btn.dataset.skill;
+      if (currentFilters.skills.includes(skill)) {
+        currentFilters.skills = currentFilters.skills.filter(x => x !== skill);
+        btn.classList.remove('ring-2','ring-[var(--accent1)]');
+      } else {
+        currentFilters.skills.push(skill);
+        btn.classList.add('ring-2','ring-[var(--accent1)]');
+      }
+    });
   });
 }
 
-chatClose.addEventListener('click', ()=> chatPopup.style.display = 'none');
-
-chatSend.addEventListener('click', async () => {
-  const text = chatInput.value.trim();
-  if(!text) return;
-  // optimism push
-  const bubble = document.createElement('div');
-  bubble.className = 'p-3 rounded-xl text-sm self-end text-white btn-gradient';
-  bubble.textContent = text;
-  chatBody.appendChild(bubble);
-  chatBody.scrollTop = chatBody.scrollHeight;
-  chatInput.value = '';
-
-  // send to backend (prototype)
-  try{
-    await axios.post(`/api/chat/${activeChatUser.id}/send/`, { message: text }, authHeaders());
-  }catch(e){
-    console.error(e);
-    showToast('Message failed');
+/* ---------- sendFriendRequest & wireCardActions ---------- */
+async function sendFriendRequest(user) {
+  try {
+    const res = await axios.post('/api/friends/request/', { to_user: user.id }, authHeaders());
+    showToast('Connection request sent');
+    await loadNotifications();
+    await refreshFriendsCount();
+  } catch (e) {
+    console.error('sendFriendRequest', e);
+    const msg = e?.response?.data?.detail || 'Request failed';
+    showToast(msg);
   }
-});
+}
 
-function renderMessages(list){
+function wireCardActions(cardEl, user) {
+  const connectBtn = cardEl.querySelector('.connectBtn');
+  const chatBtn = cardEl.querySelector('.chatBtn');
+
+  if (connectBtn) {
+    connectBtn.onclick = null;
+    connectBtn.addEventListener('click', () => {
+      connectBtn.textContent = 'Pending';
+      sendFriendRequest(user);
+    });
+  }
+  if (chatBtn) {
+    chatBtn.onclick = null;
+    chatBtn.addEventListener('click', () => openChat(user));
+  }
+}
+
+/* ---------- loadAndRender ---------- */
+async function loadAndRender() {
+  feedGrid.innerHTML = '';
+  for (let i = 0; i < 6; i++) {
+    const s = document.createElement('div');
+    s.className = 'p-4 rounded-xl glass animate-pulse';
+    s.style.height = '180px';
+    feedGrid.appendChild(s);
+  }
+
+  const data = await fetchFeed({ search: currentFilters.search, age: currentFilters.age, skills: currentFilters.skills, lang: currentFilters.lang });
+  allUsers = Array.isArray(data) ? data : (data.results || []);
+  feedGrid.innerHTML = '';
+
+  if (allUsers.length === 0) {
+    if (emptyState) emptyState.classList.remove('hidden');
+    if (resultsCount) resultsCount.textContent = '0 results';
+    return;
+  } else {
+    if (emptyState) emptyState.classList.add('hidden');
+    if (resultsCount) resultsCount.textContent = `${allUsers.length} people`;
+  }
+
+  allUsers.forEach((u, idx) => {
+    const c = makeCard(u);
+    feedGrid.appendChild(c);
+    wireCardActions(c, u);
+  });
+
+  try {
+    if (window.VanillaTilt) {
+      VanillaTilt.init(document.querySelectorAll('[data-tilt]'), { max: 8, speed: 600, glare: true, "max-glare": 0.08 });
+    }
+  } catch (e) {}
+
+  try {
+    if (window.gsap) {
+      gsap.from('.glass.card-3d', { y: 20, opacity: 0, stagger: 0.06, duration: 0.6, ease: "power3.out" });
+    }
+  } catch (e) {}
+}
+
+/* ---------- Friends count & Notifications ---------- */
+async function refreshFriendsCount() {
+  try {
+    const res = await axios.get('/api/friends/', authHeaders());
+    const friends = res.data || [];
+    if (friendsCountEl) friendsCountEl.textContent = friends.length;
+  } catch (e) {
+    console.warn('refreshFriendsCount', e);
+  }
+}
+
+async function loadNotifications() {
+  if (!notifList) return;
+  try {
+    const res = await axios.get('/api/notifications/', authHeaders());
+    const list = res.data || [];
+    const unread = list.filter(n => !n.is_read).length;
+    if (notifBadge) {
+      if (unread > 0) {
+        notifBadge.classList.remove('hidden');
+        notifBadge.textContent = unread;
+      } else {
+        notifBadge.classList.add('hidden');
+      }
+    }
+    notifList.innerHTML = '';
+    list.forEach(n => {
+      const el = document.createElement('div');
+      el.className = 'p-3 rounded-md border flex items-start gap-3';
+      const actorText = n.actor ? (n.actor.full_name || 'User') : '';
+      el.innerHTML = `
+        <div class="w-10 h-10 rounded bg-gray-100 flex items-center justify-center text-sm font-bold">${escapeHtml(actorText.split(' ').map(s=>s[0]).slice(0,2).join(''))}</div>
+        <div class="flex-1">
+          <div class="text-sm font-semibold">${escapeHtml(n.text)}</div>
+          <div class="text-xs text-[var(--muted)] mt-1">${new Date(n.created_at).toLocaleString()}</div>
+        </div>
+        <div class="flex flex-col gap-2 items-end">
+          ${n.type === 'friend_request' && n.data && n.data.request_id ? `<button class="acceptBtn chip" data-id="${n.data.request_id}">Accept</button><button class="rejectBtn chip" data-id="${n.data.request_id}">Reject</button>` : `<button class="viewBtn chip" data-id="${n.id}">View</button>`}
+        </div>
+      `;
+      notifList.appendChild(el);
+    });
+
+    notifList.querySelectorAll('.acceptBtn').forEach(b => b.addEventListener('click', async (ev) => {
+      const id = ev.currentTarget.dataset.id;
+      try {
+        await axios.post(`/api/friends/request/${id}/accept/`, {}, authHeaders());
+        showToast('Accepted');
+        await loadNotifications(); await refreshFriendsCount(); await loadAndRender();
+      } catch (e) { showToast('Accept failed'); }
+    }));
+    notifList.querySelectorAll('.rejectBtn').forEach(b => b.addEventListener('click', async (ev) => {
+      const id = ev.currentTarget.dataset.id;
+      try {
+        await axios.post(`/api/friends/request/${id}/reject/`, {}, authHeaders());
+        showToast('Rejected');
+        await loadNotifications(); await loadAndRender();
+      } catch (e) { showToast('Reject failed'); }
+    }));
+    notifList.querySelectorAll('.viewBtn').forEach(b => b.addEventListener('click', (ev) => {
+      showToast('View not implemented');
+    }));
+  } catch (e) {
+    console.error('loadNotifications', e);
+  }
+}
+
+/* ---------- Chat popup (basic) ---------- */
+function openChat(user) {
+  activeChatUser = user;
+  if (chatPopup) chatPopup.style.display = 'block';
+  if (chatTitle) chatTitle.textContent = `Chat with ${user.full_name || user.username}`;
+  if (chatBody) chatBody.innerHTML = `<div class="text-sm text-[var(--muted)]">Loading messages...</div>`;
+  axios.get(`/api/chat/${user.id}/`, authHeaders()).then(res => {
+    renderMessages(res.data || []);
+  }).catch(e => {
+    chatBody.innerHTML = `<div class="text-sm text-[var(--muted)]">No messages yet. Say hi!</div>`;
+  });
+}
+
+function renderMessages(list) {
+  if (!chatBody) return;
   chatBody.innerHTML = '';
-  list.forEach(m=>{
+  list.forEach(m => {
     const el = document.createElement('div');
     el.className = 'mb-2';
-    el.innerHTML = `<div class="text-xs text-[var(--muted)] font-semibold mb-1">${m.from_name || m.from}</div><div class="p-3 rounded-xl bg-white border border-[var(--accent1)] border-opacity-10 text-sm">${escapeHtml(m.text)}</div>`;
+    el.innerHTML = `<div class="text-xs text-[var(--muted)]">${escapeHtml(m.from_name || m.from || '')}</div><div class="p-2 rounded-lg bg-white border text-sm">${escapeHtml(m.text || '')}</div>`;
     chatBody.appendChild(el);
   });
   chatBody.scrollTop = chatBody.scrollHeight;
 }
 
-/* ========== UI wiring ========== */
-btnSearch.addEventListener('click', ()=> { currentFilters.search = searchInput.value.trim(); loadAndRender(); });
-searchInput.addEventListener('keydown', (e)=> { if(e.key === 'Enter') { currentFilters.search = searchInput.value.trim(); loadAndRender(); }});
-btnApply.addEventListener('click', ()=> { currentFilters.age = ageFilter.value; loadAndRender(); });
-btnClear.addEventListener('click', ()=> { 
-  currentFilters = { search:'', age:'', skills:[], lang:'' }; 
-  ageFilter.value=''; 
-  searchInput.value=''; 
-  skillsListEl.querySelectorAll('.chip').forEach(c=>c.classList.remove('active')); 
-  languagesListEl.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
-  loadAndRender(); 
-});
+if (chatSend) {
+  chatSend.addEventListener('click', async () => {
+    if (!activeChatUser) return;
+    const text = (chatInput.value || '').trim();
+    if (!text) return;
+    const bubble = document.createElement('div'); bubble.className = 'p-2 mb-2 bg-[var(--accent1)] text-white rounded-lg text-sm self-end'; bubble.textContent = text;
+    if (chatBody) chatBody.appendChild(bubble);
+    if (chatBody) chatBody.scrollTop = chatBody.scrollHeight;
+    if (chatInput) chatInput.value = '';
+    try {
+      await axios.post(`/api/chat/${activeChatUser.id}/send/`, { message: text }, authHeaders());
+    } catch (e) { showToast('Message failed'); }
+  });
+}
+if (chatClose) chatClose.addEventListener('click', ()=> { if (chatPopup) chatPopup.style.display = 'none'; });
+
+/* ---------- Top bar wiring ---------- */
+if (notifBtn) {
+  notifBtn.addEventListener('click', () => {
+    const panel = document.getElementById('notifPanel');
+    if(!panel) return;
+    if (panel.style.transform === 'translateX(0%)') {
+      panel.style.transform = 'translateX(100%)';
+    } else {
+      panel.style.transform = 'translateX(0%)';
+      loadNotifications();
+    }
+  });
+}
+if (notifClose) notifClose.addEventListener('click', ()=> { if (notifPanel) notifPanel.style.transform = 'translateX(100%)'; });
+if (btnFriends) btnFriends.addEventListener('click', ()=> { window.location.href = '/friends/'; });
+
+if (btnSearch) btnSearch.addEventListener('click', ()=> { currentFilters.search = (searchInput.value || '').trim(); loadAndRender(); });
+if (searchInput && searchInput.addEventListener) searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { currentFilters.search = (searchInput.value || '').trim(); loadAndRender(); }});
+if (btnApply) btnApply.addEventListener('click', ()=> { currentFilters.age = ageFilter.value; loadAndRender(); });
+if (btnClear) btnClear.addEventListener('click', ()=> { currentFilters = { search:'', age:'', skills:[], lang:'' }; if (ageFilter) ageFilter.value=''; if (searchInput) searchInput.value=''; loadAndRender(); });
 
 document.getElementById('btnLogout').addEventListener('click', ()=> {
   localStorage.removeItem('access_token'); localStorage.removeItem('refresh_token'); window.location.href = '/login/';
@@ -890,18 +972,37 @@ document.getElementById('btnProfile').addEventListener('click', ()=> {
   window.location.href = '/profile/'; // implement profile page
 });
 
-/* initial load */
-(async function init(){
-  const me = await fetchProfile();
-  // populate some UI with me if needed
-  document.getElementById('btnProfile').textContent = '👤 ' + (me.full_name || me.username);
-  // initial feed
-  const seed = await fetchFeed({});
-  allUsers = Array.isArray(seed) ? seed : (seed.results || []);
-  populateSkills(allUsers);
-  setupLanguageFilters();
-  loadAndRender();
-})();
+/* ---------- init (no flash) ---------- */
+async function init() {
+  const access = localStorage.getItem('access_token');
+  if (!access) { window.location.href = '/login/'; return; }
+
+  try {
+    const meRes = await axios.get('/api/me/', authHeaders());
+    const me = meRes.data;
+    const btnProfile = document.getElementById('btnProfile');
+    if (btnProfile) btnProfile.textContent = (me.full_name || me.username) ? '👤 ' + (me.full_name || me.username) : '👤 Profile';
+  } catch (e) {
+    console.error('token verify fail', e);
+    window.location.href = '/login/';
+    return;
+  }
+
+  try {
+    const seed = await fetchFeed({});
+    allUsers = Array.isArray(seed) ? seed : (seed.results || []);
+    populateSkills(allUsers);
+    await loadAndRender();
+    await refreshFriendsCount();
+    await loadNotifications();
+    setInterval(loadNotifications, 20000);
+  } catch (e) {
+    console.error('init load fail', e);
+  }
+}
+
+/* run init on load */
+init();
 </script>
 
 </body>

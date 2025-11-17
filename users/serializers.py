@@ -80,6 +80,52 @@ class UserSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "username", "email", "is_active")
 
+
+# append to backend/users/serializers.py
+
+from rest_framework import serializers
+from django.contrib.auth import get_user_model
+from .models import FriendRequest, Friendship, Notification
+
+User = get_user_model()
+
+class FriendRequestSerializer(serializers.ModelSerializer):
+    from_user = serializers.SerializerMethodField()
+    to_user = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FriendRequest
+        fields = ('id','from_user','to_user','status','created_at')
+
+    def get_from_user(self, obj):
+        return {"id": obj.from_user.id, "full_name": getattr(obj.from_user, 'full_name', ''), "avatar_url": getattr(obj.from_user,'avatar_url','')}
+
+    def get_to_user(self, obj):
+        return {"id": obj.to_user.id, "full_name": getattr(obj.to_user, 'full_name', ''), "avatar_url": getattr(obj.to_user,'avatar_url','')}
+
+
+class FriendshipSerializer(serializers.ModelSerializer):
+    friend = serializers.SerializerMethodField()
+    class Meta:
+        model = Friendship
+        fields = ("id","friend","created_at")
+    def get_friend(self, obj):
+        request_user = self.context.get('request').user
+        other = obj.user2 if obj.user1.id == request_user.id else obj.user1
+        return {"id": other.id, "full_name": getattr(other,'full_name',''), "avatar_url": getattr(other,'avatar_url','')}
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    actor = serializers.SerializerMethodField()
+    class Meta:
+        model = Notification
+        fields = ("id","type","text","data","is_read","actor","created_at")
+
+    def get_actor(self, obj):
+        if not obj.actor_user:
+            return None
+        return {"id": obj.actor_user.id, "full_name": getattr(obj.actor_user,'full_name',''), "avatar_url": getattr(obj.actor_user,'avatar_url','')}
+
     
     
     

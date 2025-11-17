@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import SignupSerializer
+from django.db import models
 
 class SignupView(APIView):
     permission_classes = []  # allow unauthenticated
@@ -174,6 +175,169 @@ class UsersListView(generics.ListAPIView):
             random.shuffle(filtered)
 
         return filtered
+    
+    
+# append to backend/users/views.py
+
+from rest_framework import generics, permissions, status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.decorators import api_view, permission_classes
+from django.shortcuts import get_object_or_404
+from django.db import IntegrityError, transaction
+from django.conf import settings
+from .models import FriendRequest, Friendship, Notification
+from .serializers import FriendRequestSerializer, FriendshipSerializer, NotificationSerializer
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+# Helper: create canonical friendship tuple (small_id, big_id)
+def _make_friendship(user_a, user_b):
+    a, b = (user_a, user_b) if user_a.id < user_b.id else (user_b, user_a)
+    return a, b
+
+class SendFriendRequestView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        to_user_id = request.data.get('to_user')
+        if not to_user_id:
+            return Response({"detail":"to_user required"}, status=status.HTTP_400_BAD_REQUEST)
+        if int(to_user_id) == request.user.id:
+            return Response({"detail":"cannot send request to yourself"}, status=status.HTTP_400_BAD_REQUEST)
+        to_user = get_object_or_404(User, id=to_user_id)
+
+        # if already friends -> error
+        a, b = _make_friendship(request.user, to_user)
+        if Friendship.objects.filter(user1=a, user2=b).exists():
+            return Response({"detail":"already friends"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # if reverse pending request exists -> accept it automatically
+        reverse = FriendRequest.objects.filter(from_user=to_user, to_user=request.user, status=FriendRequest.STATUS_PENDING).first()
+        if reverse:
+            # accept reverse request
+            with transaction.atomic():
+                reverse.status = FriendRequest.STATUS_ACCEPTED
+                reverse.save()
+                u1, u2 = _make_friendship(request.user, to_user)
+                Friendship.objects.get_or_create(user1=u1, user2=u2)
+                # create notifications
+                Notification.objects.create(user=to_user, actor_user=request.user, type=Notification.NOTIF_FRIEND_ACCEPT, text=f"{request.user.get_username()} accepted your request")
+                Notification.objects.create(user=request.user, actor_user=to_user, type=Notification.NOTIF_FRIEND_ACCEPT, text=f"You are now friends with {to_user.get_username()}")
+            return Response({"detail":"mutual request accepted"}, status=status.HTTP_200_OK)
+
+        # normal create pending request (prevent duplicates)
+        try:
+            fr, created = FriendRequest.objects.get_or_create(from_user=request.user, to_user=to_user)
+            if not created:
+                if fr.status == FriendRequest.STATUS_PENDING:
+                    return Response({"detail":"request already pending"}, status=status.HTTP_400_BAD_REQUEST)
+                # if previously rejected/cancelled, recreate
+                fr.status = FriendRequest.STATUS_PENDING
+                fr.save()
+            # create notification for receiver
+            Notification.objects.create(user=to_user, actor_user=request.user, type=Notification.NOTIF_FRIEND_REQUEST, text=f"{request.user.get_username()} sent you a connection request", data={"request_id": fr.id})
+        except IntegrityError:
+            return Response({"detail":"duplicate request"}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(FriendRequestSerializer(fr).data, status=status.HTTP_201_CREATED)
+
+
+class ReceivedFriendRequestsView(generics.ListAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = FriendRequestSerializer
+
+    def get_queryset(self):
+        return FriendRequest.objects.filter(to_user=self.request.user).order_by('-created_at')
+
+
+class SentFriendRequestsView(generics.ListAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = FriendRequestSerializer
+
+    def get_queryset(self):
+        return FriendRequest.objects.filter(from_user=self.request.user).order_by('-created_at')
+
+
+class AcceptFriendRequestView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, pk):
+        fr = get_object_or_404(FriendRequest, id=pk)
+        if fr.to_user.id != request.user.id:
+            return Response({"detail":"not allowed"}, status=status.HTTP_403_FORBIDDEN)
+        if fr.status != FriendRequest.STATUS_PENDING:
+            return Response({"detail":"request not pending"}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            fr.status = FriendRequest.STATUS_ACCEPTED
+            fr.save()
+            u1, u2 = _make_friendship(fr.from_user, fr.to_user)
+            Friendship.objects.get_or_create(user1=u1, user2=u2)
+            # notifications
+            Notification.objects.create(user=fr.from_user, actor_user=fr.to_user, type=Notification.NOTIF_FRIEND_ACCEPT, text=f"{fr.to_user.get_username()} accepted your request", data={"request_id": fr.id})
+            Notification.objects.create(user=fr.to_user, actor_user=fr.from_user, type=Notification.NOTIF_FRIEND_ACCEPT, text=f"You are now friends with {fr.from_user.get_username()}", data={"request_id": fr.id})
+        return Response({"detail":"accepted"}, status=status.HTTP_200_OK)
+
+
+class RejectFriendRequestView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, pk):
+        fr = get_object_or_404(FriendRequest, id=pk)
+        if fr.to_user.id != request.user.id:
+            return Response({"detail":"not allowed"}, status=status.HTTP_403_FORBIDDEN)
+        if fr.status != FriendRequest.STATUS_PENDING:
+            return Response({"detail":"request not pending"}, status=status.HTTP_400_BAD_REQUEST)
+        fr.status = FriendRequest.STATUS_REJECTED
+        fr.save()
+        Notification.objects.create(user=fr.from_user, actor_user=fr.to_user, type=Notification.NOTIF_SYSTEM, text=f"{fr.to_user.get_username()} rejected your connection request", data={"request_id": fr.id})
+        return Response({"detail":"rejected"}, status=status.HTTP_200_OK)
+
+
+class CancelFriendRequestView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def delete(self, request, pk):
+        fr = get_object_or_404(FriendRequest, id=pk)
+        if fr.from_user.id != request.user.id:
+            return Response({"detail":"not allowed"}, status=status.HTTP_403_FORBIDDEN)
+        if fr.status != FriendRequest.STATUS_PENDING:
+            return Response({"detail":"cannot cancel"}, status=status.HTTP_400_BAD_REQUEST)
+        fr.status = FriendRequest.STATUS_CANCELLED
+        fr.save()
+        return Response({"detail":"cancelled"}, status=status.HTTP_200_OK)
+
+
+class FriendsListView(generics.ListAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = FriendshipSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        # friendships where user is user1 or user2
+        return Friendship.objects.filter(models.Q(user1=user) | models.Q(user2=user)).order_by('-created_at')
+
+
+# Notifications
+class NotificationsListView(generics.ListAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = NotificationSerializer
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user).order_by('-created_at')[:50]
+
+
+class MarkNotificationReadView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, pk):
+        notif = get_object_or_404(Notification, id=pk, user=request.user)
+        notif.is_read = True
+        notif.save()
+        return Response({"detail":"marked"}, status=status.HTTP_200_OK)
+
 
 
 
